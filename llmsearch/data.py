@@ -21,7 +21,14 @@ def load(ticker: str, start: str = "1990-01-01", end: str | None = None,
          use_cache: bool = True) -> pd.DataFrame:
     """Daily OHLCV, split/dividend adjusted, indexed by date (tz-naive)."""
     os.makedirs(CACHE_DIR, exist_ok=True)
-    path = os.path.join(CACHE_DIR, f"{ticker.replace('/', '_')}.csv")
+    # The cache key MUST include the requested start. Keyed on ticker alone, a
+    # run asking for SPY from 2000 would silently be handed a file another run
+    # had fetched from 2013, and the only symptom is a short panel -- which is
+    # exactly what happened once. Date alone cannot detect it after the fact,
+    # because a series legitimately starting late (an ETF's inception) looks
+    # identical to a truncated cache.
+    safe = "".join(c if c.isalnum() or c in "-._" else "_" for c in ticker)
+    path = os.path.join(CACHE_DIR, f"{safe}__from{start}.csv")
 
     if use_cache and os.path.exists(path) and time.time() - os.path.getmtime(path) < 12 * 3600:
         df = pd.read_csv(path, index_col=0, parse_dates=True)

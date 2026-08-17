@@ -24,6 +24,7 @@ from strategies.ew_cw_rotation import EwCwRotation
 from strategies.gold_btc import GoldBtcRotation
 from strategies.iuse_monthly import IuseMonthlyTrend
 from strategies.mom_lowvol import MomLowVolRotation
+from strategies.small_large import SmallLargeRotation
 from strategies.value_growth import ValueGrowthRotation
 
 PASS, FAIL = [], []
@@ -478,7 +479,8 @@ def _():
     the registry rather than a test that has to be remembered and copied."""
     from llmsearch.panel import Pair
     cut = 800
-    for cls in (ValueGrowthRotation, MomLowVolRotation, GoldBtcRotation):
+    for cls in (ValueGrowthRotation, MomLowVolRotation, GoldBtcRotation,
+                SmallLargeRotation):
         s = cls()
         xv = np.array([np.mean(b) for b in s.bounds])
         base = s.signal(XP, xv)[:cut]
@@ -497,7 +499,8 @@ def _():
     from llmsearch.panel import Pair
     for cls, d in ((BtcVolRegime, D), (IuseMonthlyTrend, D),
                    (EwCwRotation, P), (ValueGrowthRotation, XP),
-                   (MomLowVolRotation, XP), (GoldBtcRotation, XP)):
+                   (MomLowVolRotation, XP), (GoldBtcRotation, XP),
+                   (SmallLargeRotation, XP)):
         s = cls()
         for seed in range(6):
             rng = np.random.default_rng(seed)
@@ -553,6 +556,40 @@ def _():
     tools.clear_cache()
     b2 = tools.pctile(tools.absv(dy), 60)
     assert np.array_equal(b, b2, equal_nan=True), "cached and uncached disagree"
+
+
+# ---------------------------------------------------------------- 37
+@check("data cache is keyed on the requested start, not the ticker alone")
+def _():
+    """A cache keyed on ticker alone silently hands a run asking for SPY from
+    2000 a file another run fetched from 2013. The only symptom is a short
+    panel, and no after-the-fact date check can catch it: a series legitimately
+    starting late looks identical to a truncated cache."""
+    import glob
+    import os as _os
+    import pandas as _pd
+    from llmsearch import data as _data
+
+    early, late = "2001-01-01", "2015-01-01"
+    seen = set()
+    for s in (early, late):
+        idx = _pd.bdate_range(s, periods=300)
+        c = np.linspace(100, 200, len(idx))
+        f = _pd.DataFrame({"Open": c, "High": c, "Low": c, "Close": c,
+                           "Volume": 1.0}, index=idx)
+        _os.makedirs(_data.CACHE_DIR, exist_ok=True)
+        before = set(glob.glob(_os.path.join(_data.CACHE_DIR, "_SELFTEST*")))
+        safe = "".join(ch if ch.isalnum() or ch in "-._" else "_" for ch in "_SELFTEST")
+        p = _os.path.join(_data.CACHE_DIR, f"{safe}__from{s}.csv")
+        f.to_csv(p)
+        seen.add(p)
+        got = _data.load("_SELFTEST", start=s)
+        assert got.index[0].date() == idx[0].date(), (s, got.index[0])
+        assert len(got) == len(idx), (s, len(got))
+        del before
+    assert len(seen) == 2, "the two start dates shared one cache file"
+    for p in seen:
+        _os.remove(p)
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ from strategies.ew_cw_rotation import EwCwRotation
 from strategies.gold_btc import GoldBtcRotation
 from strategies.iuse_monthly import IuseMonthlyTrend
 from strategies.mom_lowvol import MomLowVolRotation
+from strategies.small_large import SmallLargeRotation
 from strategies.value_growth import ValueGrowthRotation
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -101,6 +102,22 @@ CONFIGS = {
              "null bar, or the holdout Sharpe fails to beat all three fixed "
              "benchmarks (100% gold, 100% bitcoin, 50/50) AND the risk-matched "
              "constant-weight blend",
+    ),
+    "smlg": dict(
+        strategy=SmallLargeRotation,
+        kind="pair",
+        signal_ticker="IWM",            # leg A: Russell 2000  (weight = the signal)
+        ticker_b="IWB",                 # leg B: Russell 1000  (weight = 1 - signal)
+        leg_a="small", leg_b="large",
+        exog_ticker="SPY",              # conditioning only: risk appetite
+        trade_ticker=None,
+        start="2000-05-26",             # IWM/IWB inception
+        split="2014-12-31",
+        freq="M", ppy=12, cost_bps=5.0, block=3, spike=0.25,
+        kill="holdout information ratio vs large caps <= 0, or CV score inside "
+             "either null bar, or the holdout Sharpe fails to beat all three "
+             "fixed benchmarks (100% large, 100% small, 50/50) AND the "
+             "risk-matched constant-weight blend",
     ),
     "iuse": dict(
         strategy=IuseMonthlyTrend,
@@ -210,6 +227,15 @@ def main():
                                                 spike=cfg.get("exog_spike", 0.25)))
         fx = data.to_monthly(raw_x) if cfg["freq"] == "M" else raw_x
         common = frame.index.intersection(fx.index)
+        # A conditioning series should cover the pair, not truncate it. Losing a
+        # large share of bars means the exogenous data does not span the sample --
+        # fail loudly rather than silently fitting on whatever remains.
+        lost = 1.0 - len(common) / max(len(frame), 1)
+        if lost > 0.20:
+            raise SystemExit(
+                f"{cfg['exog_ticker']} covers only {len(common)} of {len(frame)} bars "
+                f"({lost:.0%} lost). Its range is {fx.index[0].date()}..{fx.index[-1].date()} "
+                f"against the pair's {frame.index[0].date()}..{frame.index[-1].date()}.")
         frame, frame_b, frame_x = frame.loc[common], frame_b.loc[common], fx.loc[common]
         frame_x.attrs["ticker"] = cfg["exog_ticker"]
         print(f"  conditioning on {cfg['exog_ticker']} (not tradeable, no P&L "
@@ -232,6 +258,12 @@ def main():
     m_is = frame.index <= split
     ins = build(frame[m_is], frame_b[m_is] if is_pair else None,
                 cfg["signal_ticker"] + "-IS")
+    min_bars = 40 if cfg["freq"] == "M" else 250
+    if len(ins) < min_bars:
+        raise SystemExit(
+            f"in-sample window is {len(ins)} bars, below the {min_bars} needed to fit "
+            f"{len(st.names)} parameters over blocked quarters. Check the integrity "
+            f"report above -- a short panel usually means a series did not load in full.")
     print(f"\n  in-sample : {ins.index[0].date()} -> {ins.index[-1].date()}  "
           f"({len(ins)} bars)")
     n_hold = int((frame.index > split).sum())
