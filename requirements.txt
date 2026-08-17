@@ -1,0 +1,33 @@
+# pip install -r requirements.txt
+#
+# Tested on Python 3.13.14 with:
+#   numpy 2.2.4   pandas 3.0.5   scipy 1.18.0   yfinance 1.5.2   bottleneck 1.6.0
+#
+# Floors below are the earliest versions providing the APIs this code uses, not
+# arbitrary. Nothing is pinned with == because the published figures are not
+# bit-reproducible anyway: Yahoo restates adjusted closes, so re-running months
+# later shifts the inputs far more than a numpy patch release does. The audit
+# trail for that is the integrity report each run prints to results/*.log.
+
+# sliding_window_view, default_rng, array_equal(equal_nan=)
+numpy>=1.24
+
+# DataFrame.attrs, Index.to_period, groupby on a PeriodIndex level
+pandas>=2.0
+
+# optimize.differential_evolution(init="sobol", updating="immediate"),
+# signal.lfilter for the recursive EWM, stats.norm for the deflated Sharpe
+scipy>=1.9
+
+# download(auto_adjust=True, actions=False).
+# Deliberately floored, never pinned: this package breaks whenever Yahoo
+# changes its endpoints, so an old pin fails to fetch anything at all.
+# If downloads start returning empty frames, upgrade this first.
+yfinance>=0.2.40
+
+# Optional but strongly recommended. move_rank/move_mean/move_std/move_max/
+# move_min back the rolling-percentile fast path; tools.py falls back to a pure
+# numpy implementation without it, and selfcheck asserts the two agree to 1e-10.
+# The fallback is correct but far slower, and the null bars run tens of
+# thousands of these calls inside the optimiser loop.
+bottleneck>=1.3

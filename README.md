@@ -21,6 +21,23 @@ That division is enforced here in code, not by convention: `param_space()`
 returns ranges, `structure()` receives already-decoded parameters, and there is
 no path by which a strategy can hard-code a magnitude.
 
+## Setup
+
+```bash
+pip install -r requirements.txt
+```
+
+`bottleneck` is optional but strongly recommended — it backs the
+rolling-percentile fast path, and without it the null bars take far longer.
+`tools.py` falls back to a pure-numpy implementation, and `selfcheck.py` asserts
+the two agree to 1e-10.
+
+Price data is downloaded on demand into `data_cache/`, which is **not** tracked:
+a fresh clone re-fetches from Yahoo. Yahoo restates adjusted closes, so figures
+may drift slightly from those published in `results/`. Every run prints an
+integrity report — date range, bar count, annualised vol, extreme returns — so
+any drift is visible rather than silent.
+
 ## What is here
 
 ```
@@ -28,17 +45,29 @@ llmsearch/
   tools.py      causal indicator library — SMA, EMA, ROC, RSI, realised vol,
                 z-score/Bollinger, breakout, rolling percentile, drawdown,
                 plus the gate/blend combination primitives
-  panel.py      the read-only numpy view of a price series strategies see
+  panel.py      the read-only numpy views strategies see: Panel (one asset)
+                and Pair (two legs plus an optional exogenous conditioning
+                series that carries no P&L)
   spec.py       the strategy contract: param_space() + structure() -> signal
-  backtest.py   signal -> position (lagged one bar) -> net return -> metrics
+  backtest.py   signal -> position (lagged one bar) -> net return -> metrics;
+                pair switches trade both legs, so cost is on 2x the weight change
   fit.py        differential evolution over the declared ranges
   validate.py   blocked-quarter CV, surrogate null bars, deflated Sharpe
   data.py       loading with an integrity report at the boundary
 strategies/
-  btc_regime.py     BTC-USD, daily, long/flat
-  iuse_monthly.py   S&P 500 signal -> IUSE.L, monthly, long/flat
+  btc_regime.py       BTC-USD, daily, long/flat
+  iuse_monthly.py     S&P 500 signal -> IUSE.L, monthly, long/flat
+  ew_cw_rotation.py   RSP / SPY, equal weight vs cap weight, monthly
+  value_growth.py     IVE / IVW, conditioned on the 10y yield, monthly
+  mom_lowvol.py       MTUM / USMV, conditioned on market state, monthly
 run.py          the nine-step driver
-selfcheck.py    21 invariants — run this first
+report.py       print holdout/robustness/costs from a checkpoint, without
+                waiting for the null bars to finish
+tradeleg.py     apply the fitted EW/CW rule to the UCITS pair a UK investor
+                can actually buy
+selfcheck.py    36 invariants — run this first
+report.html     the written write-up of all five results
+results/        run logs, fitted parameters, full surrogate score arrays
 ```
 
 ```bash
@@ -46,12 +75,12 @@ python selfcheck.py
 ```
 
 ```bash
-python run.py btc --splits 25 --nulls 20
+python run.py momlv --splits 30 --nulls 40
 ```
 
-```bash
-python run.py iuse --splits 40 --nulls 25
-```
+Runs checkpoint after every surrogate, so an interrupted run resumes rather than
+restarts — and a resumed run is bit-identical to an uninterrupted one, because
+skipped surrogates are still generated to advance the RNG stream.
 
 ## The validation protocol
 
