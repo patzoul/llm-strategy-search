@@ -166,7 +166,7 @@ holding period is structural, not a constraint bolted on afterwards.
   not hedged. If the intent was unhedged USD S&P 500 exposure, `CSPX.L` or
   `IUSA.L` is the instrument, and the same signal applies unchanged.
 
-## Results — five strategies, none validated
+## Results — six strategies, none validated
 
 | strategy | CV test | sign-flip null (p) | block-boot null (p) | holdout |
 |---|---|---|---|---|
@@ -175,6 +175,16 @@ holding period is structural, not a constraint bolted on afterwards.
 | EW vs CW rotation | +0.088 | 0.231 | 0.654 | active −1.56%/yr, IR −0.49 |
 | Value vs growth (rate-conditioned) | −0.061 | 0.714 | 0.619 | active −0.51%/yr, IR −0.04 |
 | Momentum vs min-vol (crash-conditioned) | **+1.010** | **0.049** | **0.073** | Sharpe 0.89 beats all benchmarks, IR +0.40 (t=0.94) |
+| Bitcoin vs gold, daily | +0.912 | 0.065 | **0.452** | Sharpe 0.70 vs 0.91 risk-matched, 1.07 for gold alone |
+
+### Average exposure is a misleading summary
+
+The bitcoin/gold rotation lost 24.5% in 2022 while averaging a **3%** bitcoin
+weight, in a year gold was flat. Not a bug: it held a full-size bitcoin position
+on exactly 8 days, and bitcoin averaged **−3.5%** on those days against −0.33%
+across the year — including 82% weight on 8 November, the day FTX collapsed. A
+strategy that is usually flat and occasionally all-in is not well described by
+its mean weight. Report the position-weighted return of the leg alongside it.
 
 ### The null bar must be sized before you look at it
 

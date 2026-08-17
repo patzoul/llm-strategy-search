@@ -21,6 +21,7 @@ from llmsearch.panel import Panel
 from llmsearch.spec import Param, Strategy
 from strategies.btc_regime import BtcVolRegime
 from strategies.ew_cw_rotation import EwCwRotation
+from strategies.gold_btc import GoldBtcRotation
 from strategies.iuse_monthly import IuseMonthlyTrend
 from strategies.mom_lowvol import MomLowVolRotation
 from strategies.value_growth import ValueGrowthRotation
@@ -477,7 +478,7 @@ def _():
     the registry rather than a test that has to be remembered and copied."""
     from llmsearch.panel import Pair
     cut = 800
-    for cls in (ValueGrowthRotation, MomLowVolRotation):
+    for cls in (ValueGrowthRotation, MomLowVolRotation, GoldBtcRotation):
         s = cls()
         xv = np.array([np.mean(b) for b in s.bounds])
         base = s.signal(XP, xv)[:cut]
@@ -496,7 +497,7 @@ def _():
     from llmsearch.panel import Pair
     for cls, d in ((BtcVolRegime, D), (IuseMonthlyTrend, D),
                    (EwCwRotation, P), (ValueGrowthRotation, XP),
-                   (MomLowVolRotation, XP)):
+                   (MomLowVolRotation, XP), (GoldBtcRotation, XP)):
         s = cls()
         for seed in range(6):
             rng = np.random.default_rng(seed)

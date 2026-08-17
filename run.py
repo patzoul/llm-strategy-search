@@ -22,6 +22,7 @@ from llmsearch import backtest, data, fit, validate
 from llmsearch.panel import Pair, Panel
 from strategies.btc_regime import BtcVolRegime
 from strategies.ew_cw_rotation import EwCwRotation
+from strategies.gold_btc import GoldBtcRotation
 from strategies.iuse_monthly import IuseMonthlyTrend
 from strategies.mom_lowvol import MomLowVolRotation
 from strategies.value_growth import ValueGrowthRotation
@@ -84,6 +85,22 @@ CONFIGS = {
         kill="holdout information ratio vs min-vol <= 0, or CV score inside "
              "either null bar, or the holdout Sharpe fails to beat all three "
              "fixed benchmarks (100% min vol, 100% momentum, 50/50)",
+    ),
+    "goldbtc": dict(
+        strategy=GoldBtcRotation,
+        kind="pair",
+        signal_ticker="BTC-USD",        # leg A: bitcoin  (weight = the signal)
+        ticker_b="GLD",                 # leg B: gold     (weight = 1 - signal)
+        leg_a="bitcoin", leg_b="gold",
+        exog_ticker="SPY",              # conditioning only: risk appetite
+        trade_ticker=None,
+        start="2014-09-17",             # BTC-USD inception on Yahoo
+        split="2021-12-31",
+        freq="D", ppy=252, cost_bps=15.0, block=21, spike=0.5,
+        kill="holdout information ratio vs gold <= 0, or CV score inside either "
+             "null bar, or the holdout Sharpe fails to beat all three fixed "
+             "benchmarks (100% gold, 100% bitcoin, 50/50) AND the risk-matched "
+             "constant-weight blend",
     ),
     "iuse": dict(
         strategy=IuseMonthlyTrend,

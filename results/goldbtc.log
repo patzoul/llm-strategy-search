@@ -1,0 +1,146 @@
+
+==============================================================================
+gold_btc_rotation  |  signal=BTC-USD  trade=BTC-USD  freq=D  cost=15bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout information ratio vs gold <= 0, or CV score inside either null bar, or the holdout Sharpe fails to beat all three fixed benchmarks (100% gold, 100% bitcoin, 50/50) AND the risk-matched constant-weight blend
+
+==============================================================================
+1. data integrity
+==============================================================================
+  BTC-USD    2014-09-17 -> 2026-08-17   4353 bars / 11.9y   vol 55.0%  ret range [-37.2%, +25.2%]  maxgap 1d
+  GLD        2014-09-17 -> 2026-08-17   2996 bars / 11.9y   vol 16.2%  ret range [-10.3%, +6.4%]  maxgap 4d
+  aligned on 2996 common bars (dropped 1357/0)
+  SPY        2014-09-17 -> 2026-08-14   2995 bars / 11.9y   vol 17.5%  ret range [-10.9%, +10.5%]  maxgap 4d
+  conditioning on SPY (not tradeable, no P&L contribution); 2995 bars after alignment
+
+  in-sample : 2014-09-17 -> 2021-12-31  (1837 bars)
+  holdout   : 2022-01-03 -> 2026-08-14  (1158 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmarks on the in-sample window
+==============================================================================
+  100% BTC-USD (bitcoin) (IS) CAGR  88.41%  vol 73.20%  Sharpe  1.23  maxDD -83.04%  turn/y   0.3  avgExp 99.9%  n=1837
+  100% GLD (gold) (IS)       CAGR   5.27%  vol 14.13%  Sharpe  0.43  maxDD -19.75%  turn/y   0.0  avgExp  0.0%  n=1837
+  50/50 fixed (IS)           CAGR  50.81%  vol 37.77%  Sharpe  1.28  maxDD -55.74%  turn/y   0.1  avgExp 50.0%  n=1837
+
+==============================================================================
+3. blocked-quarter CV in-sample (20 splits, 75/25, budget=normal)
+==============================================================================
+  train Sharpe  mean +2.179  median +2.204
+  TEST  Sharpe  mean +0.912  median +1.057  sd 0.722  positive on 90% of splits
+  optimism (train - test): +1.267
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (30 surrogates x 20 splits)
+==============================================================================
+     signflip 1/30: -0.743
+     signflip 2/30: +0.089
+     signflip 3/30: +0.157
+     signflip 4/30: +0.161
+     signflip 5/30: +0.654
+     signflip 6/30: -0.034
+     signflip 7/30: +0.572
+     signflip 8/30: +0.241
+     signflip 9/30: +0.953
+     signflip 10/30: +0.801
+     signflip 11/30: +0.176
+     signflip 12/30: +0.439
+     signflip 13/30: +0.454
+     signflip 14/30: +0.308
+     signflip 15/30: -0.154
+     signflip 16/30: +0.456
+     signflip 17/30: +0.059
+     signflip 18/30: +0.746
+     signflip 19/30: +0.291
+     signflip 20/30: +0.226
+     signflip 21/30: +0.429
+     signflip 22/30: +0.160
+     signflip 23/30: +0.572
+     signflip 24/30: +0.013
+     signflip 25/30: +0.756
+     signflip 26/30: +0.359
+     signflip 27/30: -0.712
+     signflip 28/30: -0.171
+     signflip 29/30: +0.741
+     signflip 30/30: +0.348
+  signflip   null mean +0.278  p95 +0.781  max +0.953  ->  real +0.912 :: clears p95 only  (p=0.065)
+     blockboot 1/30: +0.647
+     blockboot 2/30: +0.337
+     blockboot 3/30: +0.225
+     blockboot 4/30: +0.718
+     blockboot 5/30: +0.061
+     blockboot 6/30: +1.279
+     blockboot 7/30: +1.252
+     blockboot 8/30: +1.843
+     blockboot 9/30: +0.661
+     blockboot 10/30: +1.435
+     blockboot 11/30: +0.739
+     blockboot 12/30: +0.803
+     blockboot 13/30: +0.154
+     blockboot 14/30: -0.238
+     blockboot 15/30: +1.279
+     blockboot 16/30: +1.562
+     blockboot 17/30: +0.659
+     blockboot 18/30: +1.012
+     blockboot 19/30: +0.015
+     blockboot 20/30: +1.026
+     blockboot 21/30: +0.938
+     blockboot 22/30: +0.101
+     blockboot 23/30: +0.406
+     blockboot 24/30: +0.977
+     blockboot 25/30: +0.630
+     blockboot 26/30: +0.660
+     blockboot 27/30: +1.252
+     blockboot 28/30: +1.100
+     blockboot 29/30: +1.108
+     blockboot 30/30: +0.862
+  blockboot  null mean +0.783  p95 +1.505  max +1.843  ->  real +0.912 :: INSIDE THE NULL  (p=0.452)
+
+==============================================================================
+5. parameters deployed (median over the CV splits that generalised)
+==============================================================================
+  trend_n=62, mom_n=20, mom_th=0.281, vol_n=30, calm_th=0.244, look=176, gw=0.0202
+  (single full-IS fit, for contrast:
+   trend_n=26, mom_n=8, mom_th=0.324, vol_n=52, calm_th=0.63, look=127, gw=0.0203)
+
+==============================================================================
+6. in-sample performance with the deployed parameters
+==============================================================================
+  strategy (IS)              CAGR 120.70%  vol 49.69%  Sharpe  1.84  maxDD -44.29%  turn/y  26.8  avgExp 45.0%  n=1837
+  100% BTC-USD (bitcoin) (IS) CAGR  88.41%  vol 73.20%  Sharpe  1.23  maxDD -83.04%  turn/y   0.3  avgExp 99.9%  n=1837
+  100% GLD (gold) (IS)       CAGR   5.27%  vol 14.13%  Sharpe  0.43  maxDD -19.75%  turn/y   0.0  avgExp  0.0%  n=1837
+  50/50 fixed (IS)           CAGR  50.81%  vol 37.77%  Sharpe  1.28  maxDD -55.74%  turn/y   0.1  avgExp 50.0%  n=1837
+
+==============================================================================
+7. HOLDOUT -- read once, nothing is tuned after this point
+==============================================================================
+  strategy                   CAGR  19.06%  vol 32.18%  Sharpe  0.70  maxDD -37.00%  turn/y  35.0  avgExp 31.9%  n=1158
+  100% BTC-USD (bitcoin)     CAGR   6.92%  vol 51.80%  Sharpe  0.39  maxDD -66.74%  turn/y   0.0  avgExp 100.0%  n=1158
+  100% GLD (gold)            CAGR  20.42%  vol 19.00%  Sharpe  1.07  maxDD -26.40%  turn/y   0.0  avgExp  0.0%  n=1158
+  50/50 fixed                CAGR  17.50%  vol 28.76%  Sharpe  0.70  maxDD -43.52%  turn/y   0.0  avgExp 50.0%  n=1158
+
+  active return vs 100% GLD (CW): -1.75%/yr   IR +0.08
+
+  deflated Sharpe on the holdout: 0.035  (n_trials=1221 DE fits, n_obs=1158)
+
+==============================================================================
+8. parameter robustness on the holdout -- plateau or spike?
+==============================================================================
+  trend_n    base +0.70 | +0.48 +0.76 +0.88 +0.86   spread 0.40
+  mom_n      base +0.70 | +0.55 +0.53 +0.77 +0.81   spread 0.29
+  mom_th     base +0.70 | +0.69 +0.68 +0.75 +0.79   spread 0.11
+  vol_n      base +0.70 | +0.36 +0.50 +0.86 +0.79   spread 0.50
+  calm_th    base +0.70 | +0.62 +0.68 +0.65 +0.57   spread 0.11
+  look       base +0.70 | +0.61 +0.71 +0.82 +0.83   spread 0.23
+  gw         base +0.70 | +0.70 +0.70 +0.71 +0.72   spread 0.02
+
+==============================================================================
+9. cost sensitivity (holdout)
+==============================================================================
+    7.5 bps   Sharpe +0.78   CAGR +22.22%
+   15.0 bps   Sharpe +0.70   CAGR +19.06%
+   30.0 bps   Sharpe +0.54   CAGR +12.95%
+   75.0 bps   Sharpe +0.05   CAGR -3.61%
+
+wrote C:\Coding\Claude\llm-strategy-search\results\goldbtc.json   (15530s)
