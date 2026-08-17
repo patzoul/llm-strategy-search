@@ -1,0 +1,131 @@
+
+==============================================================================
+iuse_monthly_trend  |  signal=SPY  trade=IUSE.L  freq=M  cost=10bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout Sharpe net of costs below buy&hold's, or CV score inside either null bar, or the fitted rule collapses to a permanent core holding (floor at its cap with no timing left)
+
+==============================================================================
+1. data integrity
+==============================================================================
+  SPY        1993-01-29 -> 2026-08-10   8439 bars / 33.5y   vol 18.6%  ret range [-10.9%, +14.5%]  maxgap 7d
+  IUSE.L     2010-09-30 -> 2026-08-11   4007 bars / 15.9y   vol 15.8%  ret range [-9.6%, +8.9%]  maxgap 5d
+
+  in-sample : 1993-01-29 -> 2013-12-31  (252 bars)
+  holdout   : 2014-01-31 -> 2026-08-10  (152 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmark on the in-sample window
+==============================================================================
+  buy & hold (IS)            CAGR   9.08%  vol 14.82%  Sharpe  0.66  maxDD -50.78%  turn/y   0.0  inMkt 99.6%  n=252
+
+==============================================================================
+3. blocked-quarter CV in-sample (40 splits, 75/25, budget=normal)
+==============================================================================
+  train Sharpe  mean +1.086  median +1.086
+  TEST  Sharpe  mean +0.673  median +0.624  sd 0.514  positive on 88% of splits
+  optimism (train - test): +0.412
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (25 surrogates x 40 splits)
+==============================================================================
+     signflip 1/25: +0.262
+     signflip 2/25: -0.090
+     signflip 3/25: -0.105
+     signflip 4/25: +0.272
+     signflip 5/25: +0.011
+     signflip 6/25: -0.028
+     signflip 7/25: +0.018
+     signflip 8/25: -0.110
+     signflip 9/25: -0.495
+     signflip 10/25: -0.319
+     signflip 11/25: +0.040
+     signflip 12/25: +0.124
+     signflip 13/25: +0.349
+     signflip 14/25: +0.379
+     signflip 15/25: -0.144
+     signflip 16/25: -0.205
+     signflip 17/25: -0.078
+     signflip 18/25: +0.354
+     signflip 19/25: +0.097
+     signflip 20/25: -0.051
+     signflip 21/25: -0.243
+     signflip 22/25: +0.149
+     signflip 23/25: -0.127
+     signflip 24/25: +0.639
+     signflip 25/25: +0.067
+  signflip   null mean +0.031  p95 +0.374  max +0.639  ->  real +0.673 :: CLEARS the max  (p=0.038)
+     blockboot 1/25: +0.047
+     blockboot 2/25: +0.241
+     blockboot 3/25: +0.361
+     blockboot 4/25: +0.658
+     blockboot 5/25: +0.141
+     blockboot 6/25: +0.181
+     blockboot 7/25: +0.696
+     blockboot 8/25: +0.753
+     blockboot 9/25: +0.766
+     blockboot 10/25: +0.715
+     blockboot 11/25: +0.168
+     blockboot 12/25: +0.287
+     blockboot 13/25: +0.594
+     blockboot 14/25: +0.010
+     blockboot 15/25: +0.292
+     blockboot 16/25: +1.046
+     blockboot 17/25: +0.410
+     blockboot 18/25: +0.218
+     blockboot 19/25: +0.531
+     blockboot 20/25: +0.648
+     blockboot 21/25: +0.918
+     blockboot 22/25: +0.569
+     blockboot 23/25: +1.075
+     blockboot 24/25: +0.440
+     blockboot 25/25: +0.763
+  blockboot  null mean +0.501  p95 +1.020  max +1.075  ->  real +0.673 :: INSIDE THE NULL  (p=0.346)
+
+==============================================================================
+5. parameters deployed (median over the CV splits that generalised)
+==============================================================================
+  trend_n=9, trend_w=0.00204, mom_n=7, mom_th=-0.0399, vol_n=3, vol_look=24, vol_beta=0.0693, floor=0.00239
+  (single full-IS fit, for contrast:
+   trend_n=9, trend_w=0.00211, mom_n=8, mom_th=-0.0369, vol_n=3, vol_look=24, vol_beta=0.0155, floor=0.00202)
+
+==============================================================================
+6. in-sample performance with the deployed parameters
+==============================================================================
+  strategy (IS)              CAGR   9.76%  vol  9.47%  Sharpe  1.03  maxDD -14.86%  turn/y   1.0  inMkt 89.7%  n=252
+  buy & hold (IS)            CAGR   9.08%  vol 14.82%  Sharpe  0.66  maxDD -50.78%  turn/y   0.0  inMkt 99.6%  n=252
+
+==============================================================================
+7. HOLDOUT -- read once, nothing is tuned after this point
+==============================================================================
+  on SPY (the timed series):
+  strategy                   CAGR   7.93%  vol 10.74%  Sharpe  0.77  maxDD -22.46%  turn/y   1.8  inMkt 100.0%  n=152
+  buy & hold                 CAGR  13.84%  vol 14.49%  Sharpe  0.97  maxDD -23.93%  turn/y   0.0  inMkt 100.0%  n=152
+
+  on IUSE.L (the instrument actually bought, executed at the first close after each decision):
+  strategy                   CAGR   6.09%  vol 10.79%  Sharpe  0.60  maxDD -23.89%  turn/y   1.8  inMkt 100.0%  n=153
+  buy & hold                 CAGR  11.39%  vol 14.82%  Sharpe  0.81  maxDD -24.64%  turn/y   0.0  inMkt 100.0%  n=153
+
+  deflated Sharpe on the holdout: 0.235  (n_trials=2041 DE fits, n_obs=152)
+
+==============================================================================
+8. parameter robustness on the holdout -- plateau or spike?
+==============================================================================
+  trend_n    base +0.77 | +0.74 +0.83 +0.75 +0.88   spread 0.14
+  trend_w    base +0.77 | +0.77 +0.77 +0.84 +0.87   spread 0.10
+  mom_n      base +0.77 | +0.75 +0.77 +0.81 +0.84   spread 0.09
+  mom_th     base +0.77 | +0.77 +0.77 +0.75 +0.75   spread 0.02
+  vol_n      base +0.77 | +0.77 +0.77 +0.76 +0.76   spread 0.00
+  vol_look   base +0.77 | +0.77 +0.77 +0.77 +0.77   spread 0.00
+  vol_beta   base +0.77 | +0.76 +0.76 +0.77 +0.77   spread 0.01
+  floor      base +0.77 | +0.77 +0.77 +0.79 +0.82   spread 0.05
+
+==============================================================================
+9. cost sensitivity (holdout)
+==============================================================================
+    5.0 bps   Sharpe +0.78   CAGR +8.03%
+   10.0 bps   Sharpe +0.77   CAGR +7.93%
+   20.0 bps   Sharpe +0.75   CAGR +7.73%
+   50.0 bps   Sharpe +0.69   CAGR +7.15%
+
+wrote C:\Coding\Claude\llm-strategy-search\results\iuse.json   (26975s)

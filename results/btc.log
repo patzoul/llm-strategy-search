@@ -1,0 +1,53 @@
+
+==============================================================================
+btc_vol_regime  |  signal=BTC-USD  trade=BTC-USD  freq=D  cost=15bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout Sharpe net of costs < 0.4, or worse than buy&hold on both Sharpe and maxDD, or CV score inside either null bar
+
+==============================================================================
+1. data integrity
+==============================================================================
+  BTC-USD    2014-09-17 -> 2026-08-11   4347 bars / 11.9y   vol 55.1%  ret range [-37.2%, +25.2%]  maxgap 1d
+
+  in-sample : 2014-09-17 -> 2022-12-31  (3028 bars)
+  holdout   : 2023-01-01 -> 2026-08-11  (1319 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmark on the in-sample window
+==============================================================================
+  buy & hold (IS)            CAGR  34.80%  vol 60.83%  Sharpe  0.80  maxDD -83.40%  turn/y   0.1  inMkt 100.0%  n=3028
+
+==============================================================================
+3. blocked-quarter CV in-sample (25 splits, 75/25, budget=normal)
+==============================================================================
+  train Sharpe  mean +1.857  median +1.866
+  TEST  Sharpe  mean +0.780  median +0.749  sd 0.694  positive on 84% of splits
+  optimism (train - test): +1.077
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (20 surrogates x 25 splits)
+==============================================================================
+     signflip 1/20: +0.254
+     signflip 2/20: -0.157
+     signflip 3/20: +0.420
+     signflip 4/20: +0.525
+     signflip 5/20: +0.300
+     signflip 6/20: +0.267
+     signflip 7/20: +0.829
+     signflip 8/20: +0.673
+     signflip 9/20: +0.205
+     signflip 10/20: +0.034
+     signflip 11/20: -0.182
+     signflip 12/20: +0.557
+     signflip 13/20: +0.498
+     signflip 14/20: +0.156
+     signflip 15/20: +0.314
+     signflip 16/20: -0.131
+     signflip 17/20: -0.061
+     signflip 18/20: +0.319
+     signflip 19/20: +0.531
+     signflip 20/20: +0.489
+  signflip   null mean +0.292  p95 +0.681  max +0.829  ->  real +0.780 :: clears p95 only  (p=0.095)
+     blockboot 1/20: +0.556
+     blockboot 2/20: +0.306

@@ -1,0 +1,97 @@
+
+==============================================================================
+btc_vol_regime  |  signal=BTC-USD  trade=BTC-USD  freq=D  cost=15bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout Sharpe net of costs < 0.4, or worse than buy&hold on both Sharpe and maxDD, or CV score inside either null bar
+
+==============================================================================
+1. data integrity
+==============================================================================
+  BTC-USD    2014-09-17 -> 2026-08-12   4348 bars / 11.9y   vol 55.1%  ret range [-37.2%, +25.2%]  maxgap 1d
+
+  in-sample : 2014-09-17 -> 2022-12-31  (3028 bars)
+  holdout   : 2023-01-01 -> 2026-08-12  (1320 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmark on the in-sample window
+==============================================================================
+  buy & hold (IS)            CAGR  34.80%  vol 60.83%  Sharpe  0.80  maxDD -83.40%  turn/y   0.1  avgExp 100.0%  n=3028
+
+==============================================================================
+3. blocked-quarter CV in-sample (25 splits, 75/25, budget=normal)
+==============================================================================
+  train Sharpe  mean +1.857  median +1.866
+  TEST  Sharpe  mean +0.780  median +0.749  sd 0.694  positive on 84% of splits
+  optimism (train - test): +1.077
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (20 surrogates x 25 splits)
+==============================================================================
+     [signflip: 20/20 resumed from checkpoint]
+  signflip   null mean +0.292  p95 +0.681  max +0.829  ->  real +0.780 :: clears p95 only  (p=0.095)
+     [blockboot: 2/20 resumed from checkpoint]
+     blockboot 3/20: -0.396
+     blockboot 4/20: -0.004
+     blockboot 5/20: +1.205
+     blockboot 6/20: +0.398
+     blockboot 7/20: +0.336
+     blockboot 8/20: +0.336
+     blockboot 9/20: +1.193
+     blockboot 10/20: +0.194
+     blockboot 11/20: +0.577
+     blockboot 12/20: +1.241
+     blockboot 13/20: +0.376
+     blockboot 14/20: +0.589
+     blockboot 15/20: +0.674
+     blockboot 16/20: -0.193
+     blockboot 17/20: +0.594
+     blockboot 18/20: +0.017
+     blockboot 19/20: +0.009
+     blockboot 20/20: -0.023
+  blockboot  null mean +0.399  p95 +1.207  max +1.241  ->  real +0.780 :: INSIDE THE NULL  (p=0.190)
+
+==============================================================================
+5. parameters deployed (median over the CV splits that generalised)
+==============================================================================
+  fast=9, slow=48, tr_th=0.354, rsi_n=12, rsi_lo=0.156, vol_n=23, vol_look=248, calm_th=0.212, gw=0.0201
+  (single full-IS fit, for contrast:
+   fast=35, slow=36, tr_th=0.363, rsi_n=8, rsi_lo=0.09, vol_n=23, vol_look=248, calm_th=0.203, gw=0.0206)
+
+==============================================================================
+6. in-sample performance with the deployed parameters
+==============================================================================
+  strategy (IS)              CAGR  52.58%  vol 32.28%  Sharpe  1.47  maxDD -53.70%  turn/y  12.6  avgExp 37.0%  n=3028
+  buy & hold (IS)            CAGR  34.80%  vol 60.83%  Sharpe  0.80  maxDD -83.40%  turn/y   0.1  avgExp 100.0%  n=3028
+
+==============================================================================
+7. HOLDOUT -- read once, nothing is tuned after this point
+==============================================================================
+  on BTC-USD (the timed series):
+  strategy                   CAGR  21.39%  vol 22.78%  Sharpe  0.96  maxDD -20.69%  turn/y  13.0  avgExp 44.2%  n=1320
+  buy & hold                 CAGR  29.32%  vol 38.72%  Sharpe  0.86  maxDD -53.06%  turn/y   0.0  avgExp 100.0%  n=1320
+
+  deflated Sharpe on the holdout: 0.145  (n_trials=1026 DE fits, n_obs=1320)
+
+==============================================================================
+8. parameter robustness on the holdout -- plateau or spike?
+==============================================================================
+  fast       base +0.96 | +1.02 +1.02 +0.97 +0.86   spread 0.15
+  slow       base +0.96 | +0.64 +0.64 +0.77 +0.83   spread 0.19
+  tr_th      base +0.96 | +1.03 +0.99 +0.95 +0.86   spread 0.17
+  rsi_n      base +0.96 | +1.02 +1.01 +0.96 +0.96   spread 0.06
+  rsi_lo     base +0.96 | +0.96 +0.96 +0.99 +1.03   spread 0.07
+  vol_n      base +0.96 | +0.81 +0.83 +1.24 +1.34   spread 0.52
+  vol_look   base +0.96 | +0.98 +1.01 +1.11 +1.07   spread 0.13
+  calm_th    base +0.96 | +0.98 +0.98 +0.92 +0.89   spread 0.09
+  gw         base +0.96 | +0.96 +0.96 +1.01 +1.03   spread 0.07
+
+==============================================================================
+9. cost sensitivity (holdout)
+==============================================================================
+    7.5 bps   Sharpe +1.01   CAGR +22.58%
+   15.0 bps   Sharpe +0.96   CAGR +21.39%
+   30.0 bps   Sharpe +0.88   CAGR +19.03%
+   75.0 bps   Sharpe +0.62   CAGR +12.23%
+
+wrote C:\Coding\Claude\llm-strategy-search\results\btc.json   (12947s)

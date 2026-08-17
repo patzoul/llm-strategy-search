@@ -1,0 +1,135 @@
+
+==============================================================================
+ew_cw_rotation  |  signal=RSP  trade=RSP  freq=M  cost=5bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout information ratio vs cap-weight <= 0, or CV score inside either null bar, or the holdout Sharpe fails to beat all three fixed benchmarks (100% CW, 100% EW, 50/50)
+
+==============================================================================
+1. data integrity
+==============================================================================
+  RSP        2003-05-01 -> 2026-08-12   5858 bars / 23.3y   vol 19.7%  ret range [-12.0%, +12.0%]  maxgap 5d
+  SPY        2003-05-01 -> 2026-08-12   5858 bars / 23.3y   vol 18.5%  ret range [-10.9%, +14.5%]  maxgap 5d
+  aligned on 280 common bars (dropped 0/0)
+
+  in-sample : 2003-05-30 -> 2016-12-30  (164 bars)
+  holdout   : 2017-01-31 -> 2026-08-12  (116 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmarks on the in-sample window
+==============================================================================
+  100% RSP (EW) (IS)         CAGR  10.15%  vol 16.09%  Sharpe  0.68  maxDD -55.56%  turn/y   0.1  avgExp 99.4%  n=164
+  100% SPY (CW) (IS)         CAGR   8.46%  vol 13.53%  Sharpe  0.67  maxDD -50.78%  turn/y   0.0  avgExp  0.0%  n=164
+  50/50 fixed (IS)           CAGR   9.33%  vol 14.72%  Sharpe  0.68  maxDD -52.78%  turn/y   0.1  avgExp 49.7%  n=164
+
+==============================================================================
+3. blocked-quarter CV in-sample (40 splits, 75/25, budget=normal)
+==============================================================================
+  train Sharpe  mean +0.945  median +0.934
+  TEST  Sharpe  mean +0.088  median +0.045  sd 0.359  positive on 55% of splits
+  optimism (train - test): +0.857
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (25 surrogates x 40 splits)
+==============================================================================
+     signflip 1/25: -0.267
+     signflip 2/25: -0.339
+     signflip 3/25: -0.495
+     signflip 4/25: -0.332
+     signflip 5/25: +0.178
+     signflip 6/25: -0.279
+     signflip 7/25: +0.360
+     signflip 8/25: -0.077
+     signflip 9/25: -0.112
+     signflip 10/25: +0.086
+     signflip 11/25: +0.109
+     signflip 12/25: +0.051
+     signflip 13/25: -0.005
+     signflip 14/25: -0.269
+     signflip 15/25: -0.088
+     signflip 16/25: +0.012
+     signflip 17/25: -0.284
+     signflip 18/25: +0.262
+     signflip 19/25: -0.626
+     signflip 20/25: -0.016
+     signflip 21/25: -0.101
+     signflip 22/25: -0.275
+     signflip 23/25: -0.018
+     signflip 24/25: +0.144
+     signflip 25/25: -0.607
+  signflip   null mean -0.120  p95 +0.245  max +0.360  ->  real +0.088 :: INSIDE THE NULL  (p=0.231)
+     blockboot 1/25: +0.442
+     blockboot 2/25: +0.147
+     blockboot 3/25: +0.193
+     blockboot 4/25: +0.564
+     blockboot 5/25: -0.114
+     blockboot 6/25: +0.191
+     blockboot 7/25: +0.284
+     blockboot 8/25: -0.036
+     blockboot 9/25: -0.283
+     blockboot 10/25: +0.278
+     blockboot 11/25: +0.284
+     blockboot 12/25: -0.203
+     blockboot 13/25: -0.168
+     blockboot 14/25: -0.052
+     blockboot 15/25: +0.197
+     blockboot 16/25: +0.120
+     blockboot 17/25: +0.679
+     blockboot 18/25: -0.246
+     blockboot 19/25: +0.025
+     blockboot 20/25: +0.328
+     blockboot 21/25: +0.076
+     blockboot 22/25: +0.749
+     blockboot 23/25: +0.437
+     blockboot 24/25: +0.266
+     blockboot 25/25: +0.196
+  blockboot  null mean +0.174  p95 +0.656  max +0.749  ->  real +0.088 :: INSIDE THE NULL  (p=0.654)
+
+==============================================================================
+5. parameters deployed (median over the CV splits that generalised)
+==============================================================================
+  mom_n=15, mom_th=0.549, rev_n=44, rev_w=0.0888, vol_n=11, calm_th=0.587, look=27, gw=0.0205
+  (single full-IS fit, for contrast:
+   mom_n=6, mom_th=0.226, rev_n=48, rev_w=0.0896, vol_n=11, calm_th=0.586, look=27, gw=0.02)
+
+==============================================================================
+6. in-sample performance with the deployed parameters
+==============================================================================
+  strategy (IS)              CAGR   9.08%  vol 13.69%  Sharpe  0.71  maxDD -50.78%  turn/y   1.2  avgExp 14.4%  n=164
+  100% RSP (EW) (IS)         CAGR  10.15%  vol 16.09%  Sharpe  0.68  maxDD -55.56%  turn/y   0.1  avgExp 99.4%  n=164
+  100% SPY (CW) (IS)         CAGR   8.46%  vol 13.53%  Sharpe  0.67  maxDD -50.78%  turn/y   0.0  avgExp  0.0%  n=164
+  50/50 fixed (IS)           CAGR   9.33%  vol 14.72%  Sharpe  0.68  maxDD -52.78%  turn/y   0.1  avgExp 49.7%  n=164
+
+==============================================================================
+7. HOLDOUT -- read once, nothing is tuned after this point
+==============================================================================
+  strategy                   CAGR  13.81%  vol 15.02%  Sharpe  0.94  maxDD -20.83%  turn/y   2.3  avgExp 26.5%  n=116
+  100% RSP (EW)              CAGR  12.04%  vol 16.69%  Sharpe  0.77  maxDD -26.68%  turn/y   0.0  avgExp 100.0%  n=116
+  100% SPY (CW)              CAGR  15.46%  vol 15.47%  Sharpe  1.01  maxDD -23.93%  turn/y   0.0  avgExp  0.0%  n=116
+  50/50 fixed                CAGR  13.79%  vol 15.81%  Sharpe  0.90  maxDD -23.10%  turn/y   0.0  avgExp 50.0%  n=116
+
+  active return vs 100% SPY (CW): -1.56%/yr   IR -0.49
+
+  deflated Sharpe on the holdout: 0.298  (n_trials=2041 DE fits, n_obs=116)
+
+==============================================================================
+8. parameter robustness on the holdout -- plateau or spike?
+==============================================================================
+  mom_n      base +0.94 | +0.95 +0.93 +0.99 +0.97   spread 0.06
+  mom_th     base +0.94 | +0.93 +0.93 +0.94 +0.92   spread 0.02
+  rev_n      base +0.94 | +0.94 +0.94 +0.94 +0.94   spread 0.00
+  rev_w      base +0.94 | +0.94 +0.94 +0.94 +0.94   spread 0.00
+  vol_n      base +0.94 | +0.96 +0.96 +0.95 +0.93   spread 0.04
+  calm_th    base +0.94 | +0.92 +0.92 +0.97 +0.97   spread 0.05
+  look       base +0.94 | +0.95 +0.95 +0.96 +0.98   spread 0.03
+  gw         base +0.94 | +0.94 +0.94 +0.94 +0.94   spread 0.00
+
+==============================================================================
+9. cost sensitivity (holdout)
+==============================================================================
+    2.5 bps   Sharpe +0.94   CAGR +13.87%
+    5.0 bps   Sharpe +0.94   CAGR +13.81%
+   10.0 bps   Sharpe +0.93   CAGR +13.68%
+   25.0 bps   Sharpe +0.91   CAGR +13.30%
+
+wrote C:\Coding\Claude\llm-strategy-search\results\ewcw.json   (25451s)

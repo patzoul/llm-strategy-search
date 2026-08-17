@@ -1,0 +1,12 @@
+# Downloaded price data. Reproducible from Yahoo and rewritten by the 12h
+# staleness check on every run, so tracking it would churn on each execution.
+# The audit trail that matters is in results/*.log: every run prints an
+# integrity report giving each series' date range, bar count, annualised vol
+# and extreme returns, so a future download can be checked against what the
+# published figures were actually computed from.
+data_cache/
+
+__pycache__/
+*.pyc
+*.tmp
+results/*.tmp

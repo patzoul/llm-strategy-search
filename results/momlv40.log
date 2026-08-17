@@ -1,0 +1,61 @@
+
+==============================================================================
+mom_lowvol_rotation  |  signal=MTUM  trade=MTUM  freq=M  cost=5bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout information ratio vs min-vol <= 0, or CV score inside either null bar, or the holdout Sharpe fails to beat all three fixed benchmarks (100% min vol, 100% momentum, 50/50)
+
+==============================================================================
+1. data integrity
+==============================================================================
+  MTUM       2013-04-18 -> 2026-08-14   3351 bars / 13.3y   vol 20.2%  ret range [-12.4%, +10.6%]  maxgap 4d
+  USMV       2013-04-18 -> 2026-08-14   3352 bars / 13.3y   vol 13.7%  ret range [-10.1%, +8.7%]  maxgap 4d
+  aligned on 161 common bars (dropped 0/0)
+  SPY        2013-04-18 -> 2026-08-14   3352 bars / 13.3y   vol 16.9%  ret range [-10.9%, +10.5%]  maxgap 4d
+  conditioning on SPY (not tradeable, no P&L contribution); 161 bars after alignment
+
+  in-sample : 2013-04-30 -> 2020-12-31  (93 bars)
+  holdout   : 2021-01-29 -> 2026-08-14  (68 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmarks on the in-sample window
+==============================================================================
+  100% MTUM (momentum) (IS)  CAGR  17.23%  vol 13.83%  Sharpe  1.23  maxDD -17.89%  turn/y   0.3  avgExp 98.9%  n=93
+  100% USMV (min vol) (IS)   CAGR  11.77%  vol 10.96%  Sharpe  1.08  maxDD -19.06%  turn/y   0.0  avgExp  0.0%  n=93
+  50/50 fixed (IS)           CAGR  14.54%  vol 12.03%  Sharpe  1.19  maxDD -18.47%  turn/y   0.1  avgExp 49.5%  n=93
+
+==============================================================================
+3. blocked-quarter CV in-sample (30 splits, 75/25, budget=normal)
+==============================================================================
+  [resumed from checkpoint]
+  train Sharpe  mean +1.454  median +1.461
+  TEST  Sharpe  mean +1.010  median +0.962  sd 0.444  positive on 93% of splits
+  optimism (train - test): +0.444
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (40 surrogates x 30 splits)
+==============================================================================
+     [signflip: 20/40 resumed from checkpoint]
+     signflip 21/40: +0.153
+     signflip 22/40: -0.482
+     signflip 23/40: +0.443
+     signflip 24/40: +0.259
+     signflip 25/40: -0.416
+     signflip 26/40: -0.369
+     signflip 27/40: +0.099
+     signflip 28/40: -0.586
+     signflip 29/40: -0.101
+     signflip 30/40: -0.028
+     signflip 31/40: -0.477
+     signflip 32/40: -1.092
+     signflip 33/40: -0.026
+     signflip 34/40: -0.933
+     signflip 35/40: -0.697
+     signflip 36/40: -0.500
+     signflip 37/40: +1.014
+     signflip 38/40: +0.285
+     signflip 39/40: -0.350
+     signflip 40/40: +0.627
+  signflip   null mean -0.085  p95 +0.688  max +1.014  ->  real +1.010 :: clears p95 only  (p=0.049)
+     [blockboot: 20/40 resumed from checkpoint]
+     blockboot 21/40: +0.653

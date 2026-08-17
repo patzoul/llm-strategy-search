@@ -1,0 +1,120 @@
+
+==============================================================================
+value_growth_rotation  |  signal=IVE  trade=IVE  freq=M  cost=5bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout information ratio vs growth <= 0, or CV score inside either null bar, or the holdout Sharpe fails to beat all three fixed benchmarks (100% growth, 100% value, 50/50)
+
+==============================================================================
+1. data integrity
+==============================================================================
+  IVE        2000-05-26 -> 2026-08-12   6591 bars / 26.2y   vol 19.1%  ret range [-11.2%, +10.7%]  maxgap 7d
+  IVW        2000-05-26 -> 2026-08-12   6591 bars / 26.2y   vol 20.0%  ret range [-11.9%, +11.3%]  maxgap 7d
+  aligned on 316 common bars (dropped 0/0)
+  ^TNX       2000-05-26 -> 2026-08-12   6585 bars / 26.2y   vol 38.2%  ret range [-29.3%, +49.9%]  maxgap 7d
+  conditioning on ^TNX (not tradeable, no P&L contribution); 316 bars after alignment
+
+  in-sample : 2000-05-31 -> 2014-12-31  (176 bars)
+  holdout   : 2015-01-30 -> 2026-08-12  (140 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmarks on the in-sample window
+==============================================================================
+  100% IVE (value) (IS)      CAGR   5.29%  vol 15.98%  Sharpe  0.41  maxDD -56.75%  turn/y   0.1  avgExp 99.4%  n=176
+  100% IVW (growth) (IS)     CAGR   3.32%  vol 15.34%  Sharpe  0.29  maxDD -53.45%  turn/y   0.0  avgExp  0.0%  n=176
+  50/50 fixed (IS)           CAGR   4.39%  vol 15.13%  Sharpe  0.36  maxDD -51.10%  turn/y   0.1  avgExp 49.7%  n=176
+
+==============================================================================
+3. blocked-quarter CV in-sample (30 splits, 75/25, budget=normal)
+==============================================================================
+  [resumed from checkpoint]
+  train Sharpe  mean +0.861  median +0.833
+  TEST  Sharpe  mean -0.061  median -0.117  sd 0.355  positive on 33% of splits
+  optimism (train - test): +0.922
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (20 surrogates x 30 splits)
+==============================================================================
+     [signflip: 10/20 resumed from checkpoint]
+     signflip 11/20: -0.260
+     signflip 12/20: -0.013
+     signflip 13/20: +0.390
+     signflip 14/20: -0.037
+     signflip 15/20: +0.401
+     signflip 16/20: +0.276
+     signflip 17/20: +0.006
+     signflip 18/20: +0.102
+     signflip 19/20: +0.566
+     signflip 20/20: -0.194
+  signflip   null mean +0.001  p95 +0.421  max +0.566  ->  real -0.061 :: INSIDE THE NULL  (p=0.714)
+     blockboot 1/20: +0.012
+     blockboot 2/20: -0.202
+     blockboot 3/20: +0.162
+     blockboot 4/20: -0.109
+     blockboot 5/20: -0.005
+     blockboot 6/20: +0.063
+     blockboot 7/20: -0.062
+     blockboot 8/20: +0.730
+     blockboot 9/20: -0.322
+     blockboot 10/20: +0.903
+     blockboot 11/20: +0.131
+     blockboot 12/20: -0.350
+     blockboot 13/20: +0.249
+     blockboot 14/20: -0.019
+     blockboot 15/20: -0.269
+     blockboot 16/20: +0.055
+     blockboot 17/20: +0.232
+     blockboot 18/20: +0.048
+     blockboot 19/20: -0.219
+     blockboot 20/20: -0.153
+  blockboot  null mean +0.044  p95 +0.739  max +0.903  ->  real -0.061 :: INSIDE THE NULL  (p=0.619)
+
+==============================================================================
+5. parameters deployed (median over the CV splits that generalised)
+==============================================================================
+  mom_n=12, mom_th=0.541, rev_n=18, rev_w=0.00104, rate_n=14, rate_th=0.629, conf_th=0.427, look=27, gw=0.0201
+  (single full-IS fit, for contrast:
+   mom_n=12, mom_th=0.492, rev_n=14, rev_w=0.000523, rate_n=14, rate_th=0.525, conf_th=0.377, look=27, gw=0.0201)
+
+==============================================================================
+6. in-sample performance with the deployed parameters
+==============================================================================
+  strategy (IS)              CAGR   4.85%  vol 15.43%  Sharpe  0.39  maxDD -53.45%  turn/y   3.0  avgExp 34.7%  n=176
+  100% IVE (value) (IS)      CAGR   5.29%  vol 15.98%  Sharpe  0.41  maxDD -56.75%  turn/y   0.1  avgExp 99.4%  n=176
+  100% IVW (growth) (IS)     CAGR   3.32%  vol 15.34%  Sharpe  0.29  maxDD -53.45%  turn/y   0.0  avgExp  0.0%  n=176
+  50/50 fixed (IS)           CAGR   4.39%  vol 15.13%  Sharpe  0.36  maxDD -51.10%  turn/y   0.1  avgExp 49.7%  n=176
+
+==============================================================================
+7. HOLDOUT -- read once, nothing is tuned after this point
+==============================================================================
+  strategy                   CAGR  16.05%  vol 15.59%  Sharpe  1.04  maxDD -16.38%  turn/y   4.0  avgExp 40.7%  n=140
+  100% IVE (value)           CAGR  10.60%  vol 14.83%  Sharpe  0.76  maxDD -25.34%  turn/y   0.0  avgExp 100.0%  n=140
+  100% IVW (growth)          CAGR  16.12%  vol 16.84%  Sharpe  0.98  maxDD -30.45%  turn/y   0.0  avgExp  0.0%  n=140
+  50/50 fixed                CAGR  13.49%  vol 14.89%  Sharpe  0.93  maxDD -23.69%  turn/y   0.0  avgExp 50.0%  n=140
+
+  active return vs 100% IVW (CW): -0.51%/yr   IR -0.04
+
+  deflated Sharpe on the holdout: 0.585  (n_trials=1231 DE fits, n_obs=140)
+
+==============================================================================
+8. parameter robustness on the holdout -- plateau or spike?
+==============================================================================
+  mom_n      base +1.04 | +0.96 +0.94 +1.01 +1.01   spread 0.07
+  mom_th     base +1.04 | +1.00 +1.01 +1.09 +1.11   spread 0.12
+  rev_n      base +1.04 | +1.04 +1.04 +1.04 +1.04   spread 0.00
+  rev_w      base +1.04 | +1.04 +1.04 +1.04 +1.04   spread 0.00
+  rate_n     base +1.04 | +1.01 +1.01 +1.00 +1.00   spread 0.01
+  rate_th    base +1.04 | +1.03 +1.04 +1.03 +1.00   spread 0.04
+  conf_th    base +1.04 | +1.06 +1.04 +1.03 +1.04   spread 0.03
+  look       base +1.04 | +1.02 +1.02 +1.06 +1.02   spread 0.05
+  gw         base +1.04 | +1.04 +1.04 +1.04 +1.04   spread 0.00
+
+==============================================================================
+9. cost sensitivity (holdout)
+==============================================================================
+    2.5 bps   Sharpe +1.04   CAGR +16.17%
+    5.0 bps   Sharpe +1.04   CAGR +16.05%
+   10.0 bps   Sharpe +1.03   CAGR +15.82%
+   25.0 bps   Sharpe +0.99   CAGR +15.13%
+
+wrote C:\Coding\Claude\llm-strategy-search\results\valgro.json   (24003s)
