@@ -1,9 +1,10 @@
 # llm-strategy-search
 
 An implementation of the framework in Vincent Maciejewski's *"Why LLMs can't
-trade, and how to use them in trading"*, applied to two strategies: **Bitcoin**
-(daily decisions) and **IUSE** (month-end decisions, minimum one-month holding
-period).
+trade, and how to use them in trading"*, applied to seven strategies: a daily
+Bitcoin volatility-regime switch, a monthly S&P 500 trend overlay, four
+long-only factor rotations, and a daily bitcoin-versus-gold switch. None
+established an edge.
 
 ## What the article actually argues
 
@@ -60,13 +61,15 @@ strategies/
   ew_cw_rotation.py   RSP / SPY, equal weight vs cap weight, monthly
   value_growth.py     IVE / IVW, conditioned on the 10y yield, monthly
   mom_lowvol.py       MTUM / USMV, conditioned on market state, monthly
+  gold_btc.py         BTC-USD / GLD, conditioned on risk appetite, daily
+  small_large.py      IWM / IWB, small vs large cap, monthly
 run.py          the nine-step driver
 report.py       print holdout/robustness/costs from a checkpoint, without
                 waiting for the null bars to finish
 tradeleg.py     apply the fitted EW/CW rule to the UCITS pair a UK investor
                 can actually buy
-selfcheck.py    36 invariants — run this first
-report.html     the written write-up of all five results
+selfcheck.py    37 invariants — run this first
+report.html     the written write-up of all seven results
 results/        run logs, fitted parameters, full surrogate score arrays
 ```
 
@@ -119,7 +122,7 @@ Sharpe as a cross-check.
 * **The traded instrument is separated from the timed one** for IUSE — see
   below.
 
-## The two strategies
+## Two strategies in detail
 
 ### BTC — `btc_vol_regime`, daily, long/flat
 
@@ -166,7 +169,7 @@ holding period is structural, not a constraint bolted on afterwards.
   not hedged. If the intent was unhedged USD S&P 500 exposure, `CSPX.L` or
   `IUSA.L` is the instrument, and the same signal applies unchanged.
 
-## Results — six strategies, none validated
+## Results — seven strategies, none validated
 
 | strategy | CV test | sign-flip null (p) | block-boot null (p) | holdout |
 |---|---|---|---|---|
@@ -176,6 +179,15 @@ holding period is structural, not a constraint bolted on afterwards.
 | Value vs growth (rate-conditioned) | −0.061 | 0.714 | 0.619 | active −0.51%/yr, IR −0.04 |
 | Momentum vs min-vol (crash-conditioned) | **+1.010** | **0.049** | **0.073** | Sharpe 0.89 beats all benchmarks, IR +0.40 (t=0.94) |
 | Bitcoin vs gold, daily | +0.912 | 0.065 | **0.452** | Sharpe 0.70 vs 0.91 risk-matched, 1.07 for gold alone |
+| Small vs large cap | **−0.535** | **0.968** | **0.968** | Sharpe 0.83 vs 0.84 risk-matched, 0.91 for large alone |
+
+The small/large rotation is the clearest failure in the set: its cross-validated
+score was negative on **0 of 25 splits**, and **29 of 30 surrogates beat the real
+data** in both null families. With no split generalising, `consensus()` hit its
+documented fallback and took the median across all fits, there being no
+generalising subset to select from. It was also the third outing for the
+momentum + reversion + volatility-gate structure, and the third failure — that
+shape is exhausted.
 
 ### Average exposure is a misleading summary
 
@@ -227,6 +239,10 @@ Recurring findings across all four:
 * **Spreads do not persist at monthly horizons.** EW−CW autocorrelation is +0.113
   at lag 1 and +0.003 at lag 3; value−growth is +0.155 and +0.012. There is no
   trend to follow at a frequency a monthly rule can act on.
+* **Every spread tested flips sign between the two windows** except
+  momentum/min-vol: small caps beat large by +3.65%/yr in-sample then lost
+  2.71%/yr out. A spread that reverses teaches the optimiser exactly the wrong
+  prior, and it is the single most reliable cause of failure here.
 * **Both style spreads flip sign between the two windows** — EW beat CW by
   +1.94%/yr in-sample and lost 2.83%/yr out; value beat growth by +2.00%/yr
   in-sample and lost 5.25%/yr out. Anything fitted on the first window learned

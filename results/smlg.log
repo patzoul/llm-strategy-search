@@ -1,0 +1,40 @@
+
+==============================================================================
+small_large_rotation  |  signal=IWM  trade=IWM  freq=M  cost=5bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout information ratio vs large caps <= 0, or CV score inside either null bar, or the holdout Sharpe fails to beat all three fixed benchmarks (100% large, 100% small, 50/50) AND the risk-matched constant-weight blend
+
+==============================================================================
+1. data integrity
+==============================================================================
+  IWM        2000-05-26 -> 2026-08-17   6594 bars / 26.2y   vol 23.9%  ret range [-13.3%, +9.1%]  maxgap 7d
+  IWB        2000-05-26 -> 2026-08-17   6594 bars / 26.2y   vol 19.0%  ret range [-11.9%, +11.4%]  maxgap 7d
+  aligned on 316 common bars (dropped 0/0)
+  SPY        2000-05-26 -> 2026-08-17   6594 bars / 26.2y   vol 19.1%  ret range [-10.9%, +14.5%]  maxgap 7d
+  conditioning on SPY (not tradeable, no P&L contribution); 316 bars after alignment
+
+  in-sample : 2000-05-31 -> 2014-12-31  (176 bars)
+  holdout   : 2015-01-30 -> 2026-08-17  (140 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmarks on the in-sample window
+==============================================================================
+  100% IWM (small) (IS)      CAGR   7.88%  vol 19.85%  Sharpe  0.48  maxDD -52.47%  turn/y   0.1  avgExp 99.4%  n=176
+  100% IWB (large) (IS)      CAGR   4.87%  vol 15.33%  Sharpe  0.39  maxDD -51.04%  turn/y   0.0  avgExp  0.0%  n=176
+  50/50 fixed (IS)           CAGR   6.47%  vol 17.16%  Sharpe  0.45  maxDD -51.31%  turn/y   0.1  avgExp 49.7%  n=176
+
+==============================================================================
+3. blocked-quarter CV in-sample (25 splits, 75/25, budget=normal)
+==============================================================================
+  train Sharpe  mean +0.633  median +0.651
+  TEST  Sharpe  mean -0.535  median -0.527  sd 0.259  positive on 0% of splits
+  optimism (train - test): +1.168
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (30 surrogates x 25 splits)
+==============================================================================
+     signflip 1/30: -0.170
+     signflip 2/30: -0.050
+     signflip 3/30: -0.245
+     signflip 4/30: -0.315
