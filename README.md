@@ -201,6 +201,57 @@ generalising subset to select from. It was also the third outing for the
 momentum + reversion + volatility-gate structure, and the third failure — that
 shape is exhausted.
 
+### A third null family: the shift-the-signal test
+
+`shiftnull.py` runs all eight strategies through the null used by the framework's
+original author (`vincent212/llm-assisted-trading-strategy-search`), which
+randomises the *alignment* rather than the data: asset returns and each config's
+exposure profile are kept exactly, and only the correspondence between signal and
+return is destroyed, by circularly rolling the position series. It is
+selection-aware (real and null both take the max over the same sampled configs).
+
+| strategy | sign-flip p | block-boot p | shift p | shift test valid? |
+|---|---|---|---|---|
+| BTC daily | 0.095 | 0.190 | **0.043** | yes |
+| SPY→IUSE monthly | 0.038 | 0.346 | 0.874 | no |
+| EW vs CW | 0.231 | 0.654 | 1.000 | no |
+| value vs growth | 0.714 | 0.619 | 1.000 | no |
+| momentum vs min-vol | 0.049 | 0.073 | **0.003** | yes |
+| bitcoin vs gold | 0.065 | 0.452 | **0.040** | yes |
+| small vs large | 0.968 | 0.968 | 1.000 | no |
+| VIX term structure | 0.032 | 0.355 | **0.003** | yes |
+
+**The shift test could only be validly run on four of the eight.** It requires
+the sample to be long relative to the strategy's longest lookback, because
+near-identity shifts have to be excluded — a small roll barely moves a slow
+position. The four monthly strategies use windows up to 144 months on samples of
+164–252 bars, so the exclusion band collapses and the author's own warning fires:
+the p-value is then inflated. Those four rows are unreliable, in the conservative
+direction.
+
+**On the four where both tests are valid, they disagree every single time.** All
+four clear the shift null at p<0.05; all four sit inside the block-bootstrap null.
+
+The reason is diagnosable, and it reverses an assumption worth stating plainly:
+the shift null does **not** control for the volatility-scaling artefact — it
+scores it as skill. Aligning low exposure with high realised volatility raises
+Sharpe mechanically, with no forecasting ability whatsoever. Rolling the position
+series destroys that alignment, so the real ordering beats the shifted ones and
+the test reads "skill". The block bootstrap preserves volatility clustering *in
+the surrogate*, letting the strategy re-earn the same benefit from data with
+nothing in it — which is why it withholds the credit.
+
+The purest case is the VIX term-structure rule, which simply *is* a vol-timing
+rule: shift p=0.003, block-boot p=0.355 with a null mean of +0.375, and on the
+untouched holdout it returned Sharpe 0.75 against 0.80 for both buy-and-hold and
+a passive constant-42% position.
+
+Holdouts side with the block bootstrap on all four. Two lost outright to a
+risk-matched passive benchmark (VIX term structure 0.75 vs 0.80; bitcoin/gold
+0.70 vs 0.91, and 1.07 for simply holding gold). The other two beat theirs by
+margins that are not statistically significant (momentum/min-vol IR +0.40,
+t=0.94; BTC deflated Sharpe 0.145).
+
 ### Average exposure is a misleading summary
 
 The bitcoin/gold rotation lost 24.5% in 2022 while averaging a **3%** bitcoin
