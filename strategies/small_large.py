@@ -62,7 +62,7 @@ class SmallLargeRotation(Strategy):
 
     def structure(self, d, p, t):
         ratio = d.ratio          # small-cap price / large-cap price
-        mkt_r = d.x.ret          # SPY returns, risk-appetite proxy (not tradeable)
+        mkt_r = d.exog("SPY").ret   # risk-appetite proxy, not tradeable
 
         # leg A -- have small caps been beating large lately?
         mom = t.gate(t.pctile(t.roc(ratio, p["mom_n"]), p["look"]),

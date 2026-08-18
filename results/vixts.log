@@ -1,0 +1,140 @@
+
+==============================================================================
+vix_term_structure  |  signal=SPY  trade=SPY  freq=D  cost=3bps
+==============================================================================
+KILL CRITERION (fixed before anything ran):
+  holdout Sharpe below buy-and-hold's, or CV score inside either null bar, or the holdout Sharpe fails to beat the risk-matched constant-exposure blend at the same average weight
+
+==============================================================================
+1. data integrity
+==============================================================================
+  SPY        2006-07-17 -> 2026-08-14   5052 bars / 20.1y   vol 19.4%  ret range [-10.9%, +14.5%]  maxgap 5d
+  ^VIX       2006-07-17 -> 2026-08-18   5054 bars / 20.1y   vol 128.9%  ret range [-35.8%, +115.6%]  maxgap 5d
+     !! max daily return 115.6% > 60% -- verify, not a result
+  conditioning on ^VIX (not tradeable, no P&L contribution); 5052 bars after alignment
+  ^VIX3M     2006-07-17 -> 2026-07-17   5032 bars / 20.0y   vol 79.9%  ret range [-27.9%, +65.2%]  maxgap 5d
+     !! max daily return 65.2% > 60% -- verify, not a result
+  conditioning on ^VIX3M (not tradeable, no P&L contribution); 5032 bars after alignment
+
+  in-sample : 2006-07-17 -> 2017-12-29  (2886 bars)
+  holdout   : 2018-01-02 -> 2026-07-17  (2146 bars)  [not loaded until step 7]
+
+==============================================================================
+2. benchmarks on the in-sample window
+==============================================================================
+  buy & hold (IS)            CAGR   9.21%  vol 19.63%  Sharpe  0.55  maxDD -55.19%  turn/y   0.1  avgExp 100.0%  n=2886
+
+==============================================================================
+3. blocked-quarter CV in-sample (20 splits, 75/25, budget=normal)
+==============================================================================
+  train Sharpe  mean +1.282  median +1.257
+  TEST  Sharpe  mean +0.555  median +0.413  sd 0.522  positive on 90% of splits
+  optimism (train - test): +0.728
+
+==============================================================================
+4. null bars -- the identical fit-and-CV pipeline on structureless data (30 surrogates x 20 splits)
+==============================================================================
+     signflip 1/30: -0.133
+     signflip 2/30: -0.360
+     signflip 3/30: -0.028
+     signflip 4/30: +0.017
+     signflip 5/30: -0.366
+     signflip 6/30: -0.413
+     signflip 7/30: -0.277
+     signflip 8/30: -0.176
+     signflip 9/30: -0.137
+     signflip 10/30: -0.423
+     signflip 11/30: +0.315
+     signflip 12/30: -0.166
+     signflip 13/30: -0.197
+     signflip 14/30: -0.147
+     signflip 15/30: -0.205
+     signflip 16/30: -0.058
+     signflip 17/30: -0.193
+     signflip 18/30: +0.321
+     signflip 19/30: -0.506
+     signflip 20/30: +0.293
+     signflip 21/30: -0.174
+     signflip 22/30: +0.139
+     signflip 23/30: -0.241
+     signflip 24/30: -0.285
+     signflip 25/30: +0.024
+     signflip 26/30: -0.453
+     signflip 27/30: -0.180
+     signflip 28/30: +0.012
+     signflip 29/30: +0.240
+     signflip 30/30: -0.440
+  signflip   null mean -0.140  p95 +0.305  max +0.321  ->  real +0.555 :: CLEARS the max  (p=0.032)
+     blockboot 1/30: +0.751
+     blockboot 2/30: +0.104
+     blockboot 3/30: +0.128
+     blockboot 4/30: +0.558
+     blockboot 5/30: +0.293
+     blockboot 6/30: +0.505
+     blockboot 7/30: +0.477
+     blockboot 8/30: +0.049
+     blockboot 9/30: -0.102
+     blockboot 10/30: +0.434
+     blockboot 11/30: +0.789
+     blockboot 12/30: -0.095
+     blockboot 13/30: +0.627
+     blockboot 14/30: +0.489
+     blockboot 15/30: -0.081
+     blockboot 16/30: +1.011
+     blockboot 17/30: +0.380
+     blockboot 18/30: +0.390
+     blockboot 19/30: +0.602
+     blockboot 20/30: +0.603
+     blockboot 21/30: +0.712
+     blockboot 22/30: +0.152
+     blockboot 23/30: +0.569
+     blockboot 24/30: +0.161
+     blockboot 25/30: -0.326
+     blockboot 26/30: -0.112
+     blockboot 27/30: +1.163
+     blockboot 28/30: +0.302
+     blockboot 29/30: +0.228
+     blockboot 30/30: +0.475
+  blockboot  null mean +0.375  p95 +0.911  max +1.163  ->  real +0.555 :: INSIDE THE NULL  (p=0.355)
+
+==============================================================================
+5. parameters deployed (median over the CV splits that generalised)
+==============================================================================
+  ts_n=2, ts_th=0.227, rv_n=17, vrp_th=0.725, look=648, gw=0.0202, floor=0.251
+  (single full-IS fit, for contrast:
+   ts_n=2, ts_th=0.19, rv_n=17, vrp_th=0.797, look=648, gw=0.0211, floor=0.266)
+
+==============================================================================
+6. in-sample performance with the deployed parameters
+==============================================================================
+  strategy (IS)              CAGR   7.85%  vol  6.50%  Sharpe  1.20  maxDD  -6.92%  turn/y  12.4  avgExp 31.8%  n=2886
+  buy & hold (IS)            CAGR   9.21%  vol 19.63%  Sharpe  0.55  maxDD -55.19%  turn/y   0.1  avgExp 100.0%  n=2886
+
+==============================================================================
+7. HOLDOUT -- read once, nothing is tuned after this point
+==============================================================================
+  strategy                   CAGR   5.75%  vol  7.92%  Sharpe  0.75  maxDD  -9.94%  turn/y  16.4  avgExp 41.9%  n=2146
+  buy & hold                 CAGR  14.52%  vol 19.15%  Sharpe  0.80  maxDD -33.72%  turn/y   0.0  avgExp 100.0%  n=2146
+
+  deflated Sharpe on the holdout: 0.128  (n_trials=1221 DE fits, n_obs=2146)
+
+==============================================================================
+8. parameter robustness on the holdout -- plateau or spike?
+==============================================================================
+  ts_n       base +0.75 | +0.64 +0.64 +0.71 +0.70   spread 0.07
+  ts_th      base +0.75 | +0.77 +0.78 +0.71 +0.62   spread 0.16
+  rv_n       base +0.75 | +0.65 +0.73 +0.68 +0.64   spread 0.09
+  vrp_th     base +0.75 | +0.96 +0.85 +0.68 +0.71   spread 0.27
+  look       base +0.75 | +0.69 +0.78 +0.75 +0.75   spread 0.09
+  gw         base +0.75 | +0.75 +0.75 +0.78 +0.82   spread 0.07
+  floor      base +0.75 | +0.66 +0.71 +0.77 +0.79   spread 0.13
+
+==============================================================================
+9. cost sensitivity (holdout)
+==============================================================================
+    1.5 bps   Sharpe +0.78   CAGR +6.01%
+    3.0 bps   Sharpe +0.75   CAGR +5.75%
+    6.0 bps   Sharpe +0.68   CAGR +5.23%
+   15.0 bps   Sharpe +0.50   CAGR +3.69%
+
+wrote C:\Coding\Claude\llm-strategy-search\results\vixts.json   (8900s)

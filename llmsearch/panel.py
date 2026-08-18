@@ -32,12 +32,24 @@ class Panel:
     ppy: float
     name: str = ""
     tok: int = 0
+    x: dict = field(default_factory=dict)   # name -> Panel, exogenous, never in P&L
 
     def __len__(self):
         return len(self.close)
 
+    def exog(self, key: str) -> "Panel":
+        """Named conditioning series, with a loud error rather than a KeyError."""
+        try:
+            return self.x[key]
+        except KeyError:
+            raise KeyError(
+                f"{self.name}: no exogenous series '{key}'. Available: "
+                f"{sorted(self.x) or 'none'} -- check exog_tickers in the config."
+            ) from None
+
     @staticmethod
-    def from_frame(df: pd.DataFrame, ppy: float, name: str = "") -> "Panel":
+    def from_frame(df: pd.DataFrame, ppy: float, name: str = "",
+                   fx: dict | None = None) -> "Panel":
         c = np.ascontiguousarray(df["Close"].to_numpy(dtype=float))
         r = np.zeros_like(c)
         r[1:] = c[1:] / c[:-1] - 1.0
@@ -49,10 +61,24 @@ class Panel:
         arrs = [c, col("High"), col("Low"), col("Open"), col("Volume"), r]
         for a in arrs:
             a.flags.writeable = False
+        if fx is not None and not isinstance(fx, dict):
+            raise TypeError("fx must be a dict of name -> DataFrame, not "
+                            f"{type(fx).__name__}; exogenous series are named now.")
+        ex = {k: Panel.from_frame(v, ppy, k) for k, v in (fx or {}).items()}
         return Panel(index=pd.DatetimeIndex(df.index), close=arrs[0], high=arrs[1],
                      low=arrs[2], open=arrs[3], volume=arrs[4], ret=arrs[5],
                      ppy=ppy, name=name or df.attrs.get("ticker", ""),
-                     tok=next_token())
+                     tok=next_token(), x=ex)
+
+    def with_prices(self, df: pd.DataFrame, name: str) -> "Panel":
+        """Replace the price path, carrying the exogenous series through unchanged.
+
+        Used to build surrogates: randomising the asset must not disturb the
+        conditioning series, or the null would test the wrong hypothesis."""
+        p = Panel.from_frame(df, self.ppy, name)
+        return Panel(index=p.index, close=p.close, high=p.high, low=p.low,
+                     open=p.open, volume=p.volume, ret=p.ret, ppy=p.ppy,
+                     name=name, tok=next_token(), x=self.x)
 
     def slice(self, mask: np.ndarray) -> "Panel":
         """A new panel over a boolean mask, with its own cache token.
@@ -89,7 +115,7 @@ class Pair:
     ppy: float
     name: str = ""
     tok: int = 0
-    x: "Panel | None" = None    # optional exogenous context (e.g. a yield series)
+    x: dict = field(default_factory=dict)   # name -> Panel, exogenous, never in P&L
 
     def __len__(self):
         return len(self.a)
@@ -119,9 +145,19 @@ class Pair:
     def ratio(self) -> np.ndarray:
         return self.a.close / self.b.close
 
+    def exog(self, key: str) -> "Panel":
+        """Named conditioning series, with a loud error rather than a KeyError."""
+        try:
+            return self.x[key]
+        except KeyError:
+            raise KeyError(
+                f"{self.name}: no exogenous series '{key}'. Available: "
+                f"{sorted(self.x) or 'none'} -- check exog_tickers in the config."
+            ) from None
+
     @staticmethod
     def build(fa: pd.DataFrame, fb: pd.DataFrame, ppy: float, name: str = "",
-              fx: pd.DataFrame | None = None) -> "Pair":
+              fx: dict | None = None) -> "Pair":
         """`fx` is an optional exogenous conditioning series (not tradeable).
 
         It is aligned onto the same bars but is never part of the P&L -- the
@@ -130,14 +166,17 @@ class Pair:
         exogenous series. Resampling it alongside the pair would preserve that
         relationship and test the wrong hypothesis.
         """
+        if fx is not None and not isinstance(fx, dict):
+            raise TypeError("fx must be a dict of name -> DataFrame, not "
+                            f"{type(fx).__name__}; exogenous series are named now.")
         idx = fa.index.intersection(fb.index)
-        if fx is not None:
-            idx = idx.intersection(fx.index)
+        for v in (fx or {}).values():
+            idx = idx.intersection(v.index)
         a = Panel.from_frame(fa.loc[idx], ppy, fa.attrs.get("ticker", "A"))
         b = Panel.from_frame(fb.loc[idx], ppy, fb.attrs.get("ticker", "B"))
-        x = Panel.from_frame(fx.loc[idx], ppy, fx.attrs.get("ticker", "X")) if fx is not None else None
+        ex = {k: Panel.from_frame(v.loc[idx], ppy, k) for k, v in (fx or {}).items()}
         return Pair(a=a, b=b, ppy=ppy, name=name or f"{a.name}/{b.name}",
-                    tok=next_token(), x=x)
+                    tok=next_token(), x=ex)
 
     def with_legs(self, fa: pd.DataFrame, fb: pd.DataFrame, name: str) -> "Pair":
         """Replace the tradeable legs, carrying the exogenous series through unchanged."""

@@ -62,8 +62,8 @@ class MomLowVolRotation(Strategy):
 
     def structure(self, d, p, t):
         ratio = d.ratio          # momentum price / min-vol price
-        mkt = d.x.close          # SPY, market state proxy (not tradeable here)
-        mkt_r = d.x.ret
+        spy = d.exog("SPY")      # market state proxy, not tradeable here
+        mkt, mkt_r = spy.close, spy.ret
 
         # -- has momentum been beating min-vol lately? --------------------
         rel = t.gate(t.pctile(t.roc(ratio, p["mom_n"]), p["look"]),

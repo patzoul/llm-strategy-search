@@ -47,8 +47,8 @@ llmsearch/
                 z-score/Bollinger, breakout, rolling percentile, drawdown,
                 plus the gate/blend combination primitives
   panel.py      the read-only numpy views strategies see: Panel (one asset)
-                and Pair (two legs plus an optional exogenous conditioning
-                series that carries no P&L)
+                and Pair (two legs). Both carry a named dict of exogenous
+                conditioning series that never touch P&L, read as d.exog("^VIX")
   spec.py       the strategy contract: param_space() + structure() -> signal
   backtest.py   signal -> position (lagged one bar) -> net return -> metrics;
                 pair switches trade both legs, so cost is on 2x the weight change
@@ -63,13 +63,14 @@ strategies/
   mom_lowvol.py       MTUM / USMV, conditioned on market state, monthly
   gold_btc.py         BTC-USD / GLD, conditioned on risk appetite, daily
   small_large.py      IWM / IWB, small vs large cap, monthly
+  vix_term.py         SPY exposure from the implied-vol curve, daily
 run.py          the nine-step driver
 report.py       print holdout/robustness/costs from a checkpoint, without
                 waiting for the null bars to finish
 tradeleg.py     apply the fitted EW/CW rule to the UCITS pair a UK investor
                 can actually buy
-selfcheck.py    37 invariants — run this first
-report.html     the written write-up of all seven results
+selfcheck.py    40 invariants — run this first
+report.html     the written write-up of all eight results
 results/        run logs, fitted parameters, full surrogate score arrays
 ```
 
@@ -169,7 +170,7 @@ holding period is structural, not a constraint bolted on afterwards.
   not hedged. If the intent was unhedged USD S&P 500 exposure, `CSPX.L` or
   `IUSA.L` is the instrument, and the same signal applies unchanged.
 
-## Results — seven strategies, none validated
+## Results — eight strategies, none validated
 
 | strategy | CV test | sign-flip null (p) | block-boot null (p) | holdout |
 |---|---|---|---|---|
@@ -180,6 +181,17 @@ holding period is structural, not a constraint bolted on afterwards.
 | Momentum vs min-vol (crash-conditioned) | **+1.010** | **0.049** | **0.073** | Sharpe 0.89 beats all benchmarks, IR +0.40 (t=0.94) |
 | Bitcoin vs gold, daily | +0.912 | 0.065 | **0.452** | Sharpe 0.70 vs 0.91 risk-matched, 1.07 for gold alone |
 | Small vs large cap | **−0.535** | **0.968** | **0.968** | Sharpe 0.83 vs 0.84 risk-matched, 0.91 for large alone |
+| VIX term structure → SPY exposure | +0.555 | 0.032 | **0.355** | Sharpe 0.75 vs 0.80 for both buy&hold and risk-matched |
+
+The implied-volatility strategy is the one place the mechanism visibly *worked*
+and still did not pay. It cut exposure to its floor through the 2020 crash
+(−6.8% against SPY's −26.4%) and the 2022 bear (−8.2% against −23.8%), exactly
+as the term-structure literature says it should. But it was also underexposed
+through 2019, 2021, 2023 and 2024, and the forgone upside more than paid back
+the crashes it dodged. Its block-bootstrap null mean of **+0.375** is the
+volatility-scaling arithmetic in its purest form: this strategy *is* a vol-timing
+rule, so the surrogates — which preserve volatility clustering — harvest most of
+what it does.
 
 The small/large rotation is the clearest failure in the set: its cross-validated
 score was negative on **0 of 25 splits**, and **29 of 30 surrogates beat the real

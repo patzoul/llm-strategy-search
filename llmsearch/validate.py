@@ -92,7 +92,10 @@ def _rebuild(d: Panel, r: np.ndarray) -> Panel:
     scale = close / d.close
     df = pd.DataFrame({"Close": close, "High": d.high * scale, "Low": d.low * scale,
                        "Open": d.open * scale, "Volume": d.volume}, index=d.index)
-    return Panel.from_frame(df, d.ppy, d.name + "~surrogate")
+    # with_prices carries any exogenous series through untouched and in its
+    # original time order -- randomising the asset must not disturb what it is
+    # being conditioned on, or the null tests the wrong hypothesis.
+    return d.with_prices(df, d.name + "~surrogate")
 
 
 def _block_idx(n: int, block: int, rng: np.random.Generator) -> np.ndarray:

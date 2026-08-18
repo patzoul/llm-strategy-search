@@ -63,7 +63,7 @@ class ValueGrowthRotation(Strategy):
 
     def structure(self, d, p, t):
         ratio = d.ratio          # value price / growth price
-        yld = d.x.close          # 10-year Treasury yield, level
+        yld = d.exog("^TNX").close   # 10-year Treasury yield, level
 
         # -- price view -------------------------------------------------
         # leg A: has value been beating growth lately?

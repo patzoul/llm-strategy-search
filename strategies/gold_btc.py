@@ -71,7 +71,7 @@ class GoldBtcRotation(Strategy):
     def structure(self, d, p, t):
         btc = d.a.close          # bitcoin price
         ratio = d.ratio          # bitcoin / gold
-        mkt_r = d.x.ret          # SPY returns, risk-appetite proxy (not tradeable)
+        mkt_r = d.exog("SPY").ret   # risk-appetite proxy, not tradeable
 
         # -- primary: is bitcoin in an uptrend at all? --------------------
         # A hard step. The 0.0s are structural ("above its own average",

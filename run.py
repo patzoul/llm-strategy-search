@@ -27,6 +27,7 @@ from strategies.iuse_monthly import IuseMonthlyTrend
 from strategies.mom_lowvol import MomLowVolRotation
 from strategies.small_large import SmallLargeRotation
 from strategies.value_growth import ValueGrowthRotation
+from strategies.vix_term import VixTermStructure
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.join(HERE, "results")
@@ -118,6 +119,20 @@ CONFIGS = {
              "either null bar, or the holdout Sharpe fails to beat all three "
              "fixed benchmarks (100% large, 100% small, 50/50) AND the "
              "risk-matched constant-weight blend",
+    ),
+    "vixts": dict(
+        strategy=VixTermStructure,
+        signal_ticker="SPY",            # the tradeable leg; cash is the remainder
+        ticker_b=None,
+        exog_tickers=["^VIX", "^VIX3M"],  # conditioning only: implied vol curve
+        exog_spike=0.60,                # an implied-vol index moves far more than a price
+        trade_ticker=None,
+        start="2006-07-17",             # ^VIX3M inception
+        split="2017-12-31",
+        freq="D", ppy=252, cost_bps=3.0, block=21, spike=0.25,
+        kill="holdout Sharpe below buy-and-hold's, or CV score inside either "
+             "null bar, or the holdout Sharpe fails to beat the risk-matched "
+             "constant-exposure blend at the same average weight",
     ),
     "iuse": dict(
         strategy=IuseMonthlyTrend,
@@ -220,10 +235,11 @@ def main():
         frame.attrs["ticker"] = cfg["signal_ticker"]
         frame_b.attrs["ticker"] = cfg["ticker_b"]
 
-    frame_x = None
-    if cfg.get("exog_ticker"):
-        raw_x = data.load(cfg["exog_ticker"], start=cfg["start"])
-        data.print_report(data.integrity_report(raw_x, cfg["exog_ticker"],
+    frame_x = {}
+    exogs = cfg.get("exog_tickers") or ([cfg["exog_ticker"]] if cfg.get("exog_ticker") else [])
+    for tk in exogs:
+        raw_x = data.load(tk, start=cfg["start"])
+        data.print_report(data.integrity_report(raw_x, tk,
                                                 spike=cfg.get("exog_spike", 0.25)))
         fx = data.to_monthly(raw_x) if cfg["freq"] == "M" else raw_x
         common = frame.index.intersection(fx.index)
@@ -233,18 +249,21 @@ def main():
         lost = 1.0 - len(common) / max(len(frame), 1)
         if lost > 0.20:
             raise SystemExit(
-                f"{cfg['exog_ticker']} covers only {len(common)} of {len(frame)} bars "
+                f"{tk} covers only {len(common)} of {len(frame)} bars "
                 f"({lost:.0%} lost). Its range is {fx.index[0].date()}..{fx.index[-1].date()} "
-                f"against the pair's {frame.index[0].date()}..{frame.index[-1].date()}.")
-        frame, frame_b, frame_x = frame.loc[common], frame_b.loc[common], fx.loc[common]
-        frame_x.attrs["ticker"] = cfg["exog_ticker"]
-        print(f"  conditioning on {cfg['exog_ticker']} (not tradeable, no P&L "
-              f"contribution); {len(common)} bars after alignment")
+                f"against the panel's {frame.index[0].date()}..{frame.index[-1].date()}.")
+        frame = frame.loc[common]
+        if frame_b is not None:
+            frame_b = frame_b.loc[common]
+        frame_x = {k: v.loc[common] for k, v in frame_x.items()}
+        frame_x[tk] = fx.loc[common]
+        print(f"  conditioning on {tk} (not tradeable, no P&L contribution); "
+              f"{len(common)} bars after alignment")
 
     def build(f, fb, nm):
+        fx = {k: v.loc[f.index] for k, v in frame_x.items()} or None
         if not is_pair:
-            return Panel.from_frame(f, ppy, nm)
-        fx = None if frame_x is None else frame_x.loc[f.index]
+            return Panel.from_frame(f, ppy, nm, fx=fx)
         return Pair.build(f, fb, ppy, nm, fx=fx)
 
     trade_daily = None

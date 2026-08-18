@@ -26,6 +26,7 @@ from strategies.iuse_monthly import IuseMonthlyTrend
 from strategies.mom_lowvol import MomLowVolRotation
 from strategies.small_large import SmallLargeRotation
 from strategies.value_growth import ValueGrowthRotation
+from strategies.vix_term import VixTermStructure
 
 PASS, FAIL = [], []
 
@@ -432,6 +433,10 @@ def _():
 
 
 # --------------------------------------------------- exogenous conditioning
+def _xf(yld, idx):
+    return _frame(np.abs(yld) + 0.5, idx)
+
+
 def _frame(c, idx):
     return pd.DataFrame({"Open": c, "High": c * 1.01, "Low": c * 0.99,
                          "Close": c, "Volume": 1e6}, index=idx)
@@ -452,10 +457,24 @@ def synth_exog_pair(n=1200, seed=60):
     from llmsearch.panel import Pair
     return Pair.build(_frame(100 * np.cumprod(1 + mkt + sp), idx),
                       _frame(100 * np.cumprod(1 + mkt - sp), idx), 252, "exog",
-                      fx=_frame(np.abs(yld) + 0.5, idx))
+                      fx={"^TNX": _xf(yld, idx), "SPY": _xf(yld, idx)})
+
+
+def synth_exog_panel(n=1500, seed=70):
+    """One asset plus an implied-vol curve whose slope genuinely predicts it."""
+    rng = np.random.default_rng(seed)
+    idx = pd.bdate_range("2006-07-17", periods=n)
+    slope = np.sin(np.arange(n) / 90.0) + rng.normal(0, 0.2, n)
+    r = np.zeros(n)
+    r[1:] = 0.0004 + 0.004 * slope[:-1] + rng.normal(0, 0.008, n - 1)
+    vix = 18.0 + rng.normal(0, 1.0, n)
+    v3m = vix * (1.0 + 0.05 * slope)
+    return Panel.from_frame(_frame(100 * np.cumprod(1 + r), idx), 252, "vixpanel",
+                            fx={"^VIX": _frame(vix, idx), "^VIX3M": _frame(v3m, idx)})
 
 
 XP = synth_exog_pair()
+XPP = synth_exog_panel()
 XS = ValueGrowthRotation()
 XX = np.array([np.mean(b) for b in XS.bounds])
 
@@ -463,8 +482,14 @@ XX = np.array([np.mean(b) for b in XS.bounds])
 # ---------------------------------------------------------------- 31
 @check("exog: the conditioning series is aligned and readable, and never in P&L")
 def _():
-    assert XP.x is not None and len(XP.x) == len(XP)
-    assert (XP.x.index == XP.index).all()
+    assert set(XP.x) == {"^TNX", "SPY"} and len(XP.exog("^TNX")) == len(XP)
+    assert (XP.exog("^TNX").index == XP.index).all()
+    try:
+        XP.exog("NOPE")
+    except KeyError as e:
+        assert "NOPE" in str(e) and "^TNX" in str(e), "error should list what is available"
+    else:
+        raise AssertionError("a missing exogenous key must raise")
     sig = np.random.default_rng(1).random(len(XP))
     tot, act, _, pos = backtest.pnl(XP, sig, 0.0)
     assert np.allclose(act, pos * (XP.ret_a - XP.ret_b), atol=1e-15)
@@ -484,12 +509,12 @@ def _():
         s = cls()
         xv = np.array([np.mean(b) for b in s.bounds])
         base = s.signal(XP, xv)[:cut]
-        fx = _frame(XP.x.close.copy(), XP.index)
+        fx = _frame(XP.exog("^TNX").close.copy(), XP.index)
         rng = np.random.default_rng(7)
         fx.iloc[cut:, fx.columns.get_loc("Close")] = 3.0 + np.cumsum(
             rng.normal(0, 0.5, len(fx) - cut))
         alt = Pair.build(_frame(XP.a.close, XP.index), _frame(XP.b.close, XP.index),
-                         252, f"alt-{s.name}", fx=fx)
+                         252, f"alt-{s.name}", fx={"^TNX": fx, "SPY": fx})
         assert np.array_equal(base, s.signal(alt, xv)[:cut], equal_nan=True), s.name
 
 
@@ -517,9 +542,10 @@ def _():
     rng = np.random.default_rng(8)
     for mode in ("signflip", "blockboot"):
         s = validate.surrogate(XP, mode, rng, block=3)
-        assert s.x is not None, f"{mode} dropped the exogenous series"
-        assert np.array_equal(s.x.close, XP.x.close), f"{mode} altered it"
-        assert (s.x.index == XP.index).all()
+        assert set(s.x) == set(XP.x), f"{mode} dropped an exogenous series"
+        for k in XP.x:
+            assert np.array_equal(s.exog(k).close, XP.exog(k).close), f"{mode} altered {k}"
+            assert (s.exog(k).index == XP.index).all()
 
 
 # ---------------------------------------------------------------- 34
@@ -531,7 +557,8 @@ def _():
         """The rule the synthetic data was built to reward: hold leg A when the
         yield rose last bar. Not a fitted vector -- an arbitrary parameter
         vector would prove nothing about the null, only about the parameters."""
-        dy = np.diff(d.x.close, prepend=d.x.close[0])
+        c = d.exog("^TNX").close
+        dy = np.diff(c, prepend=c[0])
         return (dy > 0).astype(float)
 
     real = backtest.score(XP, mech(XP), 0.0, min_turn=0.0)
@@ -549,7 +576,7 @@ def _():
 def _():
     tools.clear_cache()
     tools.set_context(XP.tok)
-    dy = tools.roc(XP.x.close, 5)
+    dy = tools.roc(XP.exog("^TNX").close, 5)
     a, b = tools.pctile(dy, 60), tools.pctile(tools.absv(dy), 60)
     assert not np.allclose(a[~np.isnan(a)][-50:], b[~np.isnan(b)][-50:]), \
         "pctile(x) and pctile(|x|) returned the same array -- fingerprint collision"
@@ -590,6 +617,60 @@ def _():
     assert len(seen) == 2, "the two start dates shared one cache file"
     for p in seen:
         _os.remove(p)
+
+
+# ---------------------------------------------------------------- 38
+@check("single-asset panel carries named exogenous series through the null")
+def _():
+    st = VixTermStructure()
+    xv = np.array([np.mean(b) for b in st.bounds])
+    assert set(XPP.x) == {"^VIX", "^VIX3M"}
+    sig = st.signal(XPP, xv)
+    assert np.isfinite(sig).all() and sig.min() >= 0.0 and sig.max() <= 1.0
+    rng = np.random.default_rng(11)
+    for mode in ("signflip", "blockboot"):
+        sur = validate.surrogate(XPP, mode, rng, block=21)
+        assert set(sur.x) == set(XPP.x), f"{mode} dropped an exogenous series"
+        for k in XPP.x:
+            assert np.array_equal(sur.exog(k).close, XPP.exog(k).close), f"{mode} altered {k}"
+        assert not np.array_equal(sur.close, XPP.close), f"{mode} left the asset untouched"
+
+
+# ---------------------------------------------------------------- 39
+@check("exog look-ahead on a single-asset panel: future implied vol is inert")
+def _():
+    cut = 1000
+    st = VixTermStructure()
+    xv = np.array([np.mean(b) for b in st.bounds])
+    base = st.signal(XPP, xv)[:cut]
+    rng = np.random.default_rng(12)
+    fx = {}
+    for k in XPP.x:
+        f = _frame(XPP.exog(k).close.copy(), XPP.index)
+        f.iloc[cut:, f.columns.get_loc("Close")] = 15.0 + np.abs(
+            np.cumsum(rng.normal(0, 2.0, len(f) - cut)))
+        fx[k] = f
+    alt = Panel.from_frame(_frame(XPP.close, XPP.index), 252, "alt", fx=fx)
+    assert np.array_equal(base, st.signal(alt, xv)[:cut], equal_nan=True)
+
+
+# ---------------------------------------------------------------- 40
+@check("the implied-vol null severs the link: a known-good rule dies on surrogates")
+def _():
+    def mech(d):
+        """The rule XPP was built to reward: hold when the curve slopes upward.
+        A fitted vector would test the parameters, not the null."""
+        v = d.exog("^VIX3M").close / d.exog("^VIX").close - 1.0
+        return (v > 0).astype(float)
+
+    rng = np.random.default_rng(13)
+    real = backtest.score(XPP, mech(XPP), 0.0, min_turn=0.0)
+    sur = np.array([backtest.score(s, mech(s), 0.0, min_turn=0.0)
+                    for s in (validate.surrogate(XPP, "blockboot", rng, block=21)
+                              for _ in range(25))])
+    sur = sur[np.isfinite(sur)]
+    assert real > 0.8, f"mechanism rule should work on data built for it: {real}"
+    assert real > np.nanmax(sur), (real, np.nanmax(sur))
 
 
 if __name__ == "__main__":
