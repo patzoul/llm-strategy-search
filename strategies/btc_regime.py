@@ -14,8 +14,8 @@ That is exactly the "trend when calm, mean-revert when volatile" nonlinearity
 the article argues LLMs should be asked to *propose*, with the numbers left to
 the optimiser.
 
-CONSTRAINT: long/flat only. The venue is UK retail; the FCA bans crypto derivatives
-for retail, so there is no short leg to backtest honestly.
+CONSTRAINT: long/flat only. The intended venue is UK retail, where the FCA bans
+crypto derivatives, so there is no short leg to backtest honestly.
 
 Every indicator is turned into a rolling percentile before it meets a threshold.
 That is deliberate: a raw threshold fitted on 2015 BTC (annualised vol ~80%,

@@ -140,8 +140,8 @@ Every indicator is converted to a rolling percentile before meeting a threshold.
 A raw threshold fitted on 2015 BTC (80% annualised vol, $300 price) means
 nothing in 2025; a percentile threshold is comparable across both.
 
-**Long/flat only.** The venue is UK retail and the FCA bans crypto derivatives for
-retail, so there is no short leg that could honestly be backtested.
+**Long/flat only.** The intended venue is UK retail, where the FCA bans crypto
+derivatives, so there is no short leg that could honestly be backtested.
 
 ### IUSE — `iuse_monthly_trend`, month-end, long/flat
 

@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inside the Null</title>
+<meta name="description" content="Eight LLM-generated trading strategies tested against surrogate data containing nothing. None established an edge.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Inside the Null">
+<meta property="og:description" content="Eight LLM-generated trading strategies tested against surrogate data containing nothing. None established an edge.">
+<meta property="og:type" content="article">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128207;</text></svg>">
+<style>
+/* Minimal reset. The Artifact host supplies one; Pages does not. */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0}
+img,svg{max-width:100%}
+</style>
+</head>
+<body>
+<style>
+  :root {
+    --paper:   #F3F5F5;
+    --surface: #FFFFFF;
+    --ink:     #0F1719;
+    --muted:   #5A696E;
+    --rule:    #D6DDDD;
+    --accent:  #0E6F6B;
+    --accent-soft: #0e6f6b1f;
+    --noise:   #A3AFB3;
+    --band:    #0f171911;
+    --fail:    #9C3A2C;
+    --ok:      #0E6F6B;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+
+    --measure: 68ch;
+    --s1: 0.4rem; --s2: 0.8rem; --s3: 1.4rem; --s4: 2.2rem; --s5: 3.6rem; --s6: 5.5rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #0D1315;
+      --surface: #141C1F;
+      --ink:     #E4ECEB;
+      --muted:   #93A2A6;
+      --rule:    #242F32;
+      --accent:  #48C6BD;
+      --accent-soft: #48c6bd24;
+      --noise:   #6B797D;
+      --band:    #e4eceb0f;
+      --fail:    #DE7A67;
+      --ok:      #48C6BD;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #0D1315;
+    --surface: #141C1F;
+    --ink:     #E4ECEB;
+    --muted:   #93A2A6;
+    --rule:    #242F32;
+    --accent:  #48C6BD;
+    --accent-soft: #48c6bd24;
+    --noise:   #6B797D;
+    --band:    #e4eceb0f;
+    --fail:    #DE7A67;
+    --ok:      #48C6BD;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17.5px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 var(--s3) var(--s6);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: var(--measure); margin: 0 auto; }
+  .wide { max-width: 78ch; margin: 0 auto; }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    max-width: 78ch; margin: 0 auto;
+    padding: var(--s6) 0 var(--s4);
+    display: flex; flex-direction: column; gap: var(--s3);
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    font-size: clamp(2.6rem, 7vw, 4.1rem);
+    line-height: 1.02; font-weight: 400; margin: 0;
+    letter-spacing: -0.02em; text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 1.22rem; line-height: 1.5; color: var(--muted);
+    max-width: 56ch; margin: 0; text-wrap: pretty;
+  }
+  .byline {
+    font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: var(--s3);
+    border-top: 1px solid var(--rule); padding-top: var(--s2);
+  }
+
+  /* ---------- sections ---------- */
+  section { padding-top: var(--s5); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.7rem;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 var(--s2);
+  }
+  h2 {
+    font-size: clamp(1.5rem, 3.4vw, 2rem); font-weight: 400;
+    line-height: 1.15; margin: 0 0 var(--s3);
+    letter-spacing: -0.01em; text-wrap: balance;
+  }
+  h3 {
+    font-size: 1.06rem; font-weight: 600; margin: var(--s4) 0 var(--s2);
+    letter-spacing: -0.005em;
+  }
+  p { margin: 0 0 var(--s3); text-wrap: pretty; }
+  a { color: var(--accent); text-underline-offset: 0.18em; }
+  strong { font-weight: 600; }
+  em.term { font-style: italic; }
+
+  .lede { font-size: 1.1rem; }
+
+  code, .num {
+    font-family: var(--mono); font-size: 0.86em;
+    font-variant-numeric: tabular-nums;
+  }
+  code { background: var(--accent-soft); padding: 0.08em 0.34em; border-radius: 2px; }
+
+  ul { margin: 0 0 var(--s3); padding-left: 1.1rem; }
+  li { margin-bottom: var(--s1); }
+  li::marker { color: var(--muted); }
+
+  /* ---------- tables ---------- */
+  .scroll { overflow-x: auto; margin: 0 0 var(--s3); }
+  table {
+    border-collapse: collapse; width: 100%;
+    font-family: var(--mono); font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    text-align: left; font-weight: 500; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.64rem;
+    padding: 0 0.8rem var(--s1) 0; border-bottom: 1px solid var(--ink);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.5rem 0.8rem 0.5rem 0; border-bottom: 1px solid var(--rule);
+    white-space: nowrap; vertical-align: baseline;
+  }
+  td:last-child, th:last-child { padding-right: 0; }
+  .r { text-align: right; }
+  .pair { color: var(--ink); font-weight: 600; }
+  .neg { color: var(--fail); }
+  .pos { color: var(--accent); }
+
+  .verdict {
+    font-size: 0.62rem; letter-spacing: 0.09em; text-transform: uppercase;
+    padding: 0.16em 0.5em; border-radius: 2px; white-space: nowrap;
+  }
+  .verdict.killed { color: var(--fail); border: 1px solid currentColor; }
+  .verdict.marginal { color: var(--muted); border: 1px solid currentColor; }
+
+  /* ---------- null strips ---------- */
+  .strips { display: flex; flex-direction: column; gap: var(--s4); margin: var(--s4) 0 var(--s3); }
+  .strip-group {
+    border-top: 1px solid var(--rule); padding-top: var(--s2);
+  }
+  .strip-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s1);
+  }
+  .strip-name { font-family: var(--mono); font-size: 0.78rem; font-weight: 600; }
+  .strip-note { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); }
+  .strip-row { display: flex; align-items: center; gap: var(--s2); margin-bottom: 2px; }
+  .strip-label {
+    font-family: var(--mono); font-size: 0.64rem; color: var(--muted);
+    width: 8.5em; flex-shrink: 0; text-align: right;
+  }
+  .strip-svg { flex: 1; min-width: 0; }
+  .legend {
+    display: flex; gap: var(--s3); flex-wrap: wrap;
+    font-family: var(--mono); font-size: 0.66rem; color: var(--muted);
+    margin-top: var(--s2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 0.4em; }
+  .swatch { width: 12px; height: 12px; display: inline-block; }
+
+  /* ---------- callout ---------- */
+  .callout {
+    background: var(--surface); border-left: 2px solid var(--accent);
+    padding: var(--s3); margin: var(--s4) 0;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .eyebrow { margin-bottom: var(--s1); }
+
+  .keyfig {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--s3); margin: var(--s4) 0;
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    padding: var(--s3) 0;
+  }
+  .keyfig div { display: flex; flex-direction: column; gap: 0.2rem; }
+  .keyfig .v {
+    font-family: var(--mono); font-size: 1.5rem; font-variant-numeric: tabular-nums;
+    line-height: 1; color: var(--accent);
+  }
+  .keyfig .k { font-family: var(--mono); font-size: 0.64rem; color: var(--muted);
+               text-transform: uppercase; letter-spacing: 0.08em; }
+
+  footer {
+    max-width: 78ch; margin: var(--s6) auto 0; padding-top: var(--s3);
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+  }
+
+  @media (max-width: 640px) {
+    body { font-size: 16.5px; }
+    .strip-label { width: 100%; text-align: left; }
+    .strip-row { flex-direction: column; align-items: stretch; gap: 2px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<header class="masthead">
+  <p class="kicker">Systematic strategy research · negative result</p>
+  <h1>Inside the Null</h1>
+  <p class="standfirst">Eight trading strategies were generated by an LLM, fitted by
+    differential evolution, and validated against surrogate data containing nothing.
+    None of them survived. The interesting part is how close several came to looking
+    like they had.</p>
+  <p class="byline">
+    <span>llm-strategy-search</span>
+    <span>40 invariants · 11,000+ optimiser fits</span>
+    <span>August 2026</span>
+  </p>
+</header>
+
+<main>
+
+<section class="wrap">
+  <p class="lede">The premise, from Vincent Maciejewski's <em class="term">Why LLMs can't
+    trade</em>, is that a language model cannot tell a real market effect from a pattern
+    that merely looks good in history — so don't ask it to. Use it as a structure
+    generator inside an optimisation loop: the model proposes the <em class="term">shape</em>
+    of a strategy and declares parameter <em class="term">ranges</em>, differential
+    evolution picks the numbers, and statistics decide whether anything survived.</p>
+
+  <p>That division of labour was implemented literally. A strategy is a pure function
+    of price data and a parameter vector; it declares ranges through
+    <code>param_space()</code> and there is no code path by which it can hard-code a
+    magnitude. Five strategies were then run through the same pipeline: a daily Bitcoin
+    volatility-regime switch, a monthly S&amp;P 500 trend overlay, three long-only
+    factor rotations, and a daily bitcoin-versus-gold switch.</p>
+
+  <p>All eight failed. More usefully, <strong>seven of the eight produced
+    cross-validated scores that the identical pipeline also produces from data with no
+    exploitable structure at all</strong> — and the eighth only revealed itself as
+    noise when the null was measured more precisely.</p>
+</section>
+
+<section class="wide">
+  <p class="eyebrow">Results</p>
+  <h2>Eight strategies, eight failures</h2>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Instruments</th>
+          <th>Decision</th>
+          <th class="r">CV score</th>
+          <th class="r">Sign-flip p</th>
+          <th class="r">Block-boot p</th>
+          <th>Holdout</th>
+          <th>Verdict</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="pair">BTC-USD</td><td>daily</td>
+          <td class="r">+0.780</td><td class="r">0.095</td><td class="r">0.190</td>
+          <td>Sharpe 0.96 vs 0.86 risk-matched</td>
+          <td><span class="verdict killed">killed</span></td>
+        </tr>
+        <tr>
+          <td class="pair">SPY → IUSE.L</td><td>monthly</td>
+          <td class="r">+0.673</td><td class="r">0.038</td><td class="r">0.346</td>
+          <td>lost in all 13 holdout years</td>
+          <td><span class="verdict killed">killed</span></td>
+        </tr>
+        <tr>
+          <td class="pair">RSP / SPY</td><td>monthly</td>
+          <td class="r">+0.088</td><td class="r">0.231</td><td class="r">0.654</td>
+          <td class="neg">active −1.56%/yr, IR −0.49</td>
+          <td><span class="verdict killed">killed</span></td>
+        </tr>
+        <tr>
+          <td class="pair">IVE / IVW</td><td>monthly</td>
+          <td class="r neg">−0.061</td><td class="r">0.714</td><td class="r">0.619</td>
+          <td class="neg">active −0.51%/yr, IR −0.04</td>
+          <td><span class="verdict killed">killed</span></td>
+        </tr>
+        <tr>
+          <td class="pair">BTC-USD / GLD</td><td>daily</td>
+          <td class="r">+0.912</td><td class="r">0.065</td><td class="r neg">0.452</td>
+          <td class="neg">Sharpe 0.70 vs 0.91 risk-matched</td>
+          <td><span class="verdict killed">killed</span></td>
+        </tr>
+        <tr>
+          <td class="pair">SPY ← ^VIX/^VIX3M</td><td>daily</td>
+          <td class="r">+0.555</td><td class="r">0.032</td><td class="r neg">0.355</td>
+          <td class="neg">Sharpe 0.75 vs 0.80 risk-matched</td>
+          <td><span class="verdict killed">killed</span></td>
+        </tr>
+        <tr>
+          <td class="pair">IWM / IWB</td><td>monthly</td>
+          <td class="r neg">−0.535</td><td class="r neg">0.968</td><td class="r neg">0.968</td>
+          <td class="neg">Sharpe 0.83 vs 0.84 risk-matched</td>
+          <td><span class="verdict killed">killed</span></td>
+        </tr>
+        <tr>
+          <td class="pair">MTUM / USMV</td><td>monthly</td>
+          <td class="r">+1.010</td><td class="r">0.049</td><td class="r">0.073</td>
+          <td>IR +0.40, t = 0.94</td>
+          <td><span class="verdict marginal">not established</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The CV score is the mean information ratio on withheld calendar quarters,
+    averaged over 30–40 random 75/25 splits, net of costs. The two p-values come from
+    running the <em class="term">identical</em> pipeline on surrogate series — the
+    subject of everything that follows.</p>
+</section>
+
+<section class="wide">
+  <p class="eyebrow">The central finding</p>
+  <h2>What the machinery produces from nothing</h2>
+
+  <p>A cross-validated score feels like an out-of-sample result: the strategy was
+    scored on quarters it never saw. But the fitting happens <em class="term">inside</em>
+    the loop. What comes out isn't "how well does this rule generalise" — it is
+    <strong>what score does this machinery produce when pointed at this data</strong>.
+    That question has no natural scale until you ask what the same machinery produces
+    when there is definitionally nothing to find.</p>
+
+  <p>Each strip below is one null distribution. Every grey tick is a complete
+    cross-validation — 30 or 40 optimiser fits — run on a surrogate series built to
+    contain no exploitable structure. The shaded band spans the 5th to 95th
+    percentile. The teal diamond is the real result.</p>
+
+  <div class="strips" id="strips"></div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--noise)"></span> one surrogate run</span>
+    <span><span class="swatch" style="background:var(--band)"></span> null 5th–95th percentile</span>
+    <span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><polygon points="7,1 13,7 7,13 1,7" fill="var(--accent)"/></svg> observed result</span>
+  </div>
+
+  <p>Read the block-bootstrap rows. On data with no exploitable structure whatsoever,
+    the pipeline's typical output is a <em class="term">positive</em> score between
+    +0.04 and +0.78, and its best output reaches +0.75 to +1.84. Every real result
+    falls inside that range. BTC's +0.780 is beaten by a noise surrogate scoring
+    +1.241; the momentum strategy's +1.010 is beaten by one scoring +1.638.</p>
+
+  <p>The bitcoin-versus-gold strip is the clearest case in the set. Its null
+    <em class="term">mean</em> is <strong>+0.783</strong> against a real score of
+    +0.912 — the actual result barely clears the <em class="term">average</em>
+    surrogate, and the null's 95th percentile sits at +1.505, far above it. That null
+    mean is the highest of the six, and the reason is visible in the underlying asset:
+    in-sample bitcoin drifted upward at 90.4% a year with enormous volatility
+    clustering. The block bootstrap preserves both, so a vol-gated, trend-filtered
+    long-bitcoin rule harvests a great deal from data containing nothing.</p>
+
+  <div class="callout">
+    <p class="eyebrow">The uncomfortable part</p>
+    <p>Hand me those surrogate numbers without saying where they came from and I would
+      have called several of them promising strategies. They were generated from series
+      that, by construction, contain nothing to predict.</p>
+  </div>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">Mechanism</p>
+  <h2>Why noise scores positive</h2>
+
+  <p>The null distributions are not centred on zero. That is not a bug — it is the
+    most useful thing the exercise produced, and it has a specific cause.</p>
+
+  <h3>Volatility scaling raises Sharpe without any forecasting ability</h3>
+  <p>If a series is heteroskedastic — calm stretches and violent stretches, which every
+    financial series is — then cutting exposure when realised volatility is high
+    mechanically improves the Sharpe ratio. This is arithmetic, not prediction: you are
+    shrinking the denominator during the periods that contribute most of the variance.
+    It requires no information about future direction whatsoever.</p>
+
+  <p>Every structure written here contained a volatility or "calm" gate, because that is
+    what the mechanism literature says to do. And the block bootstrap
+    <strong>preserves volatility clustering</strong> — it resamples in blocks precisely
+    so that it does. So the surrogates hand each strategy a real, harvestable
+    statistical property that has nothing to do with the hypothesis under test. That is
+    most of why the null means sit at +0.17 to +0.50 rather than at zero.</p>
+
+  <h3>Plus optimiser freedom</h3>
+  <p>Seven to nine parameters, refitted on every split, and blocked-quarter
+    cross-validation leaves test quarters interleaved with training quarters that share
+    the same regimes — so "held out" is not fully independent.</p>
+</section>
+
+<section class="wide">
+  <p class="eyebrow">Where the article's method falls short</p>
+  <h2>Sign-flipping deletes the drift</h2>
+
+  <p>The published framework builds its null by flipping the sign of returns. That
+    destroys the structure — but it also destroys the <strong>drift</strong>. The
+    surrogate world is one where the asset didn't go up.</p>
+
+  <p>For a long-only strategy on a rising asset that is a rigged comparison in the
+    strategy's favour. In the real world it collects the risk premium simply for being
+    invested; in the surrogate world that premium is gone, so the bar is far too low.
+    The strategy is credited for being long, which took no skill and no search.</p>
+
+  <p>The size of the distortion is visible in the null means for the same strategy, same
+    pipeline, same data:</p>
+
+  <div class="keyfig">
+    <div><span class="v">+0.031</span><span class="k">IUSE · sign-flip null mean</span></div>
+    <div><span class="v">+0.501</span><span class="k">IUSE · block-boot null mean</span></div>
+    <div><span class="v">16×</span><span class="k">higher bar once drift is kept</span></div>
+  </div>
+
+  <p>And that gap decided a case. <strong>The IUSE trend overlay cleared the sign-flip
+    null at p = 0.038 and would have been reported as a validated strategy.</strong> It
+    went on to lose to buy-and-hold in all thirteen holdout years — giving up six points
+    of annual return for 1.4 points of drawdown, and in 2022, the one bear market it
+    existed for, it de-risked after the fall and lost <em class="term">more</em> than
+    the index. The block-bootstrap null put it at p = 0.346, squarely inside the noise,
+    and was right.</p>
+
+  <p>Across all five tests the block bootstrap was the stricter bar every time.</p>
+</section>
+
+<section class="wide">
+  <p class="eyebrow">A near miss</p>
+  <h2>The resolution floor</h2>
+
+  <p>The momentum-versus-minimum-volatility rotation was the only strategy to pass every
+    pre-registered gate. Its mechanism is the best-documented of the set: momentum does
+    not fail randomly, it fails under an observable conjunction — market in drawdown
+    <em class="term">and</em> volatility high — because after a sustained decline the
+    momentum book is implicitly short the beaten-down high-beta names and gets run over
+    on the rebound. The rule held momentum only when the market was near its highs and
+    calm. In 2022 it went to zero momentum weight and returned −9.5% against momentum's
+    −18.3%. The mechanism visibly fired.</p>
+
+  <p>At <strong>20 surrogates</strong> it cleared both null maxima at p = 0.048.</p>
+
+  <p>But 0.048 is 1/21 — the <strong>arithmetic floor</strong> of a 20-surrogate test.
+    When the real score beats every draw, that is the smallest number the test can emit,
+    no matter how strong or weak the effect is. It looks like significance and is
+    actually the edge of the measuring instrument.</p>
+
+  <p>The null was extended to 40 surrogates with the target fixed in advance, so that
+    finding a surrogate above the real score could not be waved away:</p>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>Null family</th><th class="r">n = 20</th><th class="r">n = 40</th><th class="r">Null max at n = 40</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>sign-flip</td><td class="r">0 beat · p = 0.048</td><td class="r">1 beat · p = 0.049</td><td class="r">+1.014</td></tr>
+        <tr><td>block bootstrap</td><td class="r">0 beat · p = 0.048</td><td class="r neg">2 beat · p = 0.073</td><td class="r neg">+1.638</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>Both p-values got worse as evidence accumulated.</strong> That is the
+    diagnostic. A genuine effect sharpens as surrogates pile up, because you are
+    resolving a real gap more precisely. A resolution artifact degrades, because the gap
+    was never there — there were simply too few draws to see the tail.</p>
+
+  <p>Everything else about the strategy was thin anyway: an active information ratio of
+    +0.40 with a standard error of 0.42 on 68 monthly observations, giving t = 0.94 and
+    a 95% interval running from −0.43 to +1.22. Deflated Sharpe, 0.084. And the sample
+    cannot be extended — minimum-volatility ETFs did not exist before 2011.</p>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">Method</p>
+  <h2>How a null bar is built</h2>
+
+  <p>Three phrases, each doing specific work: take the real series,
+    <strong>destroy the exploitable structure</strong>,
+    <strong>keep everything else</strong>, and
+    <strong>run the identical pipeline</strong>.</p>
+
+  <h3>Destroy</h3>
+  <p><strong>Sign-flip</strong> chops returns into blocks, draws a fair coin per block,
+    and negates the block on tails. Note what it does not touch: the magnitude at every
+    bar is identical, so the volatility history is preserved exactly. Only direction is
+    randomised — and with it, the drift.</p>
+  <p><strong>Stationary block bootstrap</strong> rebuilds the series by stitching
+    together randomly chosen runs of consecutive real returns, with geometric lengths
+    and circular wrap-around. Every real return still appears, so the unconditional
+    distribution — mean, variance, fat tails — survives. Dependence within a run
+    survives; dependence across the stitch points does not.</p>
+  <p>For the rotations the construction is bespoke, because a rotation rule only ever
+    earns <code>w × (ret_A − ret_B)</code>. Each bar is split into a common component
+    and a spread component, and <em class="term">only the spread's sign</em> is flipped.
+    The market move is preserved bar for bar; only which leg won is randomised. That
+    zeroes out exactly the quantity being forecast, and nothing else.</p>
+
+  <h3>Keep</h3>
+  <p>Every preserved property is something the strategy could harvest without any
+    forecasting skill, so removing it would hand the strategy an unearned win: bar count
+    and calendar, so the cross-validation splits on identical quarter blocks;
+    volatility clustering, because a vol gate profits from it arithmetically; the drift,
+    because being long a rising asset is not a discovery; the cross-correlation of the
+    two legs; and — for conditioned strategies — the exogenous series, left in its
+    original time order, so that randomising the spread severs its link to rates or
+    market state rather than carrying the relationship along intact.</p>
+
+  <h3>Run identically</h3>
+  <p>Same optimiser budget, population and iteration count, same split count and train
+    fraction, same cost model, same scoring function, same parameter box. This is
+    enforced structurally: the null calls the same cross-validation routine, which calls
+    the same fitter. Giving the null a cheaper optimiser lowers the bar, and that is the
+    single easiest way to fool yourself with this method.</p>
+
+  <p>Each surrogate yields one complete cross-validation collapsing to a single number.
+    Forty surrogates give forty numbers, and
+    <code>p = (#{surrogates ≥ real} + 1) / (n + 1)</code>, where the <code>+1</code>s
+    make it a valid conservative Monte-Carlo p-value.</p>
+
+  <div class="callout">
+    <p class="eyebrow">The cost</p>
+    <p>Two families × 40 surrogates × 30 splits is <strong>2,400 optimiser fits</strong>,
+      against 30 for the actual result. The null bar is roughly 99% of the compute and
+      the strategy backtest is a rounding error. That ratio is the honest price of
+      knowing whether a number means anything — and it is probably why this step is the
+      first thing dropped in practice.</p>
+  </div>
+</section>
+
+<section class="wide">
+  <p class="eyebrow">Notes on each strategy</p>
+  <h2>What actually happened</h2>
+
+  <h3>BTC-USD · daily volatility-regime switch</h3>
+  <p>Trend-follow when realised vol is calm, buy washed-out RSI when it is violent, hard
+    cash filter below the slow average. Long/flat only — UK retail cannot short crypto.
+    Holdout Sharpe 0.96 against buy-and-hold's 0.86 looks like a win until you match the
+    risk: at 44% average exposure the honest comparison is a constant 44% position,
+    which scored 0.86 with a −27.0% drawdown against the strategy's −20.7%. The entire
+    risk-adjusted edge came from being flat through one decline, in 2025–26.</p>
+
+  <h3>SPY → IUSE.L · monthly trend overlay</h3>
+  <p>Absolute momentum and a trend filter, scaled by a volatility percentile. Lost to
+    buy-and-hold in <strong>all thirteen</strong> holdout years. Its own conditional
+    breakdown gives the game away: in down months it lost 2.73% against the index's
+    3.63%, in up months it made 2.21% against 3.33%. It was a scaled-down version of the
+    index, not a timed one.</p>
+
+  <h3>RSP / SPY · equal weight versus cap weight</h3>
+  <p>The three fixed allocations had effectively identical in-sample Sharpes — 0.68,
+    0.67, 0.68 — so equal weight's extra return was fully explained by its extra risk
+    and no static tilt was worth having. Any edge had to come from timing. A
+    perfect-foresight oracle would have earned +6.25%/yr of active return, so the
+    opportunity was real; the rule captured −1.56%/yr of it. The spread's monthly
+    autocorrelation is +0.113 at lag 1 and +0.003 at lag 3.</p>
+
+  <h3>IVE / IVW · value versus growth, conditioned on the 10-year yield</h3>
+  <p>Given a genuine exogenous driver — growth is long-duration equity, so its relative
+    price tracks rates — the rate view was structured to take over only when rates were
+    actually moving. Cross-validated score: <strong>−0.061</strong>. On the holdout the
+    rule beat every fixed benchmark on Sharpe, but the entire result is 2022: +28.6
+    points against growth in the fastest tightening cycle in forty years. Strip out
+    2021–22 and the remaining ten years net −25.6 points. It was also a year early,
+    paying −16.4 points in 2021 before the payoff arrived.</p>
+
+  <h3>SPY ← ^VIX / ^VIX3M · equity exposure from the implied-vol curve</h3>
+  <p>The only strategy here whose signal comes from option-implied expectations rather
+    than realised price history, and the only one where the mechanism visibly
+    <em class="term">worked</em> and still did not pay. It cut exposure to its floor
+    through the 2020 crash (−6.8% against SPY's −26.4%), the 2022 bear (−8.2% against
+    −23.8%) and February 2018 (−2.0% against −6.3%) — the term structure inverted and
+    the rule reacted, exactly as documented. But it was also underexposed through 2019,
+    2021, 2023 and 2024, and the forgone upside more than repaid the crashes it dodged.
+    On the holdout it returned 5.75% a year at Sharpe 0.75 against 0.80 for both
+    buy-and-hold and a passive constant 42% position. It did buy a genuinely smaller
+    drawdown than the passive blend — −9.9% against −15.2% — but paid 0.6 points of
+    annual return and 16 turns a year for it.</p>
+
+  <p>Its block-bootstrap null mean of <strong>+0.375</strong> is the cleanest
+    demonstration in this repo of why that null matters. This strategy <em class="term">is</em>
+    a volatility-timing rule, and the block bootstrap preserves volatility clustering —
+    so the surrogates harvest most of what the real rule does, from data with nothing
+    in it. In-sample the strategy looked spectacular (Sharpe 1.20 against 0.55, a −6.9%
+    drawdown against −55.2%) because it dodged 2008. One event.</p>
+
+  <h3>IWM / IWB · small caps versus large caps</h3>
+  <p>The clearest failure in the set, and the least surprising. The size premium is
+    already largely gone — the spread is +1.15%/yr over 26 years at 1.25x the
+    volatility — so anything found had to come from timing the cycle. The
+    cross-validated score was <strong>−0.535, negative on 0 of 25 splits</strong>, and
+    <strong>29 of 30 surrogates beat the real data</strong> in both null families. On
+    the holdout, passively holding the same 19% average small-cap weight matched the
+    strategy exactly — Sharpe 0.84 against 0.83, with no trading — and simply owning
+    large caps beat both at 0.91. Small caps beat large by +3.65%/yr in-sample and lost
+    2.71%/yr out, so the optimiser learned precisely the wrong prior.</p>
+
+  <p>With no split generalising, the deployment routine hit its documented fallback and
+    took the median across all fits, there being no generalising subset to select from.
+    This was also the third outing for the momentum-plus-reversion-plus-volatility-gate
+    structure, after equal-weight/cap-weight and value/growth. Three failures on the
+    same shape is itself a result: the structures available from a causal, price-only
+    indicator library are not unlimited, and running that one on a fourth spread would
+    not be an independent test of anything.</p>
+
+  <h3>MTUM / USMV · momentum versus minimum volatility</h3>
+  <p>The best-motivated structure and the only one to reach the final gate. Covered
+    above. Worth noting that this was the one pair whose spread did <em class="term">not</em>
+    flip sign between windows — momentum beat min-vol by +5.17%/yr in-sample and
+    +5.60%/yr out — which makes it a more stable relationship, but also means a naive
+    permanent tilt captured most of the return while the strategy gave up 2%/yr of CAGR
+    versus simply holding momentum.</p>
+
+  <h3>BTC-USD / GLD · bitcoin versus gold, daily</h3>
+  <p>Run daily rather than monthly because the common history starts at bitcoin's
+    inception and a monthly test would have had ~143 observations. Bitcoin runs 4.1x
+    gold's volatility at a correlation of 0.090, so a 50/50 <em class="term">weight</em>
+    portfolio is roughly 94% bitcoin <em class="term">risk</em> — which is why this
+    strategy's kill criterion named the risk-matched constant-weight blend in advance.
+    It needed to: holding the same 32% average weight passively returned the same
+    19.5% a year at a third less volatility, a smaller drawdown and no trading, and
+    simply holding gold beat everything with a Sharpe of 1.07. The trading destroyed
+    value. In-sample bitcoin returned 90.4%/yr against gold's 6.1%, so the optimiser
+    learned "be in bitcoin"; out of sample the two were level at 20.1% and 20.4%.</p>
+
+  <div class="callout">
+    <p class="eyebrow">Average exposure is a misleading summary</p>
+    <p>This strategy lost <strong>24.5% in 2022</strong> while averaging a
+      <strong>3%</strong> bitcoin weight, in a year gold was flat. That is not a bug.
+      It held a full-size bitcoin position on exactly <strong>eight days</strong>, and
+      bitcoin averaged <strong>−3.5%</strong> on those days against −0.33% across the
+      year — including 82% weight on 8 November, the day FTX collapsed, and 100%
+      weight on 13 September for −9.3%.</p>
+    <p>A strategy that is usually flat and occasionally all-in is not described by its
+      mean weight. Report the position-weighted return of the leg beside it: here that
+      was −25.1% against the strategy's −22.1% gross.</p>
+  </div>
+
+  <div class="callout">
+    <p class="eyebrow">A pattern across the rotations</p>
+    <p>Both style spreads reversed sign between the fitting and holdout windows — equal
+      weight beat cap weight by +1.94%/yr in-sample then lost 2.83%/yr out; value beat
+      growth by +2.00%/yr then lost 5.25%/yr. Anything fitted on the first window learned
+      the wrong prior for the second. In both cases the optimiser also discarded the
+      mean-reversion leg entirely and pinned two parameters to the edges of their
+      declared boxes — a reliable sign that the structure cannot express whatever the
+      search is chasing.</p>
+  </div>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">The harness</p>
+  <h2>What the invariants caught</h2>
+
+  <p>Thirty-six invariants run before any result is trusted. The one that matters most
+    rewrites the <em class="term">entire future</em> of a price series and asserts the
+    signal history up to the cut is byte-identical. Four real bugs surfaced this way,
+    each of which would have corrupted results silently:</p>
+
+  <ul>
+    <li>Surrogate price paths were not anchored to the starting price, so block-bootstrap
+      surrogates began at a different level than the series they were calibrating.</li>
+    <li>The deflated-Sharpe implementation was missing its variance term and returned
+      approximately zero for every input — a gate that always fails is as useless as one
+      that always passes.</li>
+    <li>The indicator cache was keyed on <code>id()</code>, which never hits (pandas
+      hands back a new object each call) and can collide after garbage collection.</li>
+    <li>The replacement cache fingerprinted arrays by length and endpoints — so
+      <code>pctile(x)</code> and <code>pctile(|x|)</code> collided whenever the last value
+      was positive, and one was silently served the other's result. The look-ahead test
+      caught it because rewriting the future flips that sign and thereby changed
+      <em class="term">past</em> values.</li>
+  </ul>
+
+  <p>Two of my own analysis errors were caught the same way: a "perfect foresight" oracle
+    that was silently lagged a bar by the execution convention, making it a naive
+    momentum rule; and a correlation that returned <code>NaN</code> because US month-end
+    dates were being joined against LSE dates one day later.</p>
+
+  <p>A performance note, since it determines what is affordable: moving the indicator
+    layer from pandas to numpy took a single optimiser fit from 205 seconds to 11. The
+    null bars are only feasible because of it.</p>
+</section>
+
+<section class="wrap">
+  <p class="eyebrow">Carrying forward</p>
+  <h2>Four rules</h2>
+
+  <ul>
+    <li><strong>A surrogate null must preserve everything the strategy could harvest for
+      free, and destroy only what it claims to forecast.</strong> Drift and volatility
+      clustering are free. If the null removes them you are testing whether being
+      invested beats not being invested, which you already know.</li>
+    <li><strong>Size the null before you look at it.</strong> Twenty surrogates can never
+      report better than p = 0.048; forty reaches 0.024. Choose the count from the
+      p-value you need to resolve, and fix it in advance.</li>
+    <li><strong>A cross-validated score is a property of the procedure, not the rule.</strong>
+      It needs calibrating against what the same procedure yields on nothing before it
+      means anything at all.</li>
+    <li><strong>A parameter pinned to the edge of its declared range is a diagnostic.</strong>
+      It usually means the structure cannot express what the optimiser is chasing.</li>
+    <li><strong>Benchmark against the risk-matched constant weight, not just the legs.</strong>
+      Any strategy that lowers its average exposure cuts volatility and flatters its
+      Sharpe for reasons unrelated to skill. Name that benchmark in the kill criterion
+      before running, not after seeing the result.</li>
+  </ul>
+
+  <p>The framework itself is the durable output. Swapping in a new hypothesis is one file
+    implementing <code>param_space()</code> and <code>structure()</code>; everything
+    else — costs, execution lag, the two null families, the holdout discipline — comes
+    along unchanged. It has now killed eight strategies, which is what it is for.</p>
+</section>
+
+</main>
+
+<footer>
+  <p>Signal computed on US-listed instruments for history; venue and access constraints
+    noted per strategy. Costs modelled throughout and stress-tested to 5×. Sources:
+    Yahoo Finance daily bars, adjusted. All figures net of costs.</p>
+</footer>
+
+<script id="null-data" type="application/json">
+{
+  "btc": {"label":"BTC-USD · daily","note":"20 surrogates per family","real":0.780,
+    "signflip":[0.254,-0.157,0.42,0.525,0.3,0.267,0.829,0.673,0.205,0.034,-0.182,0.557,0.498,0.156,0.314,-0.131,-0.061,0.319,0.531,0.489],
+    "blockboot":[0.556,0.306,-0.3958,-0.0038,1.2047,0.3979,0.3357,0.3363,1.1933,0.1945,0.5767,1.2405,0.3761,0.5888,0.674,-0.1927,0.5938,0.0171,0.0089,-0.0231]},
+  "iuse": {"label":"SPY → IUSE.L · monthly","note":"25 surrogates per family","real":0.6734,
+    "signflip":[0.2615,-0.0897,-0.105,0.2721,0.0108,-0.0278,0.0178,-0.11,-0.4953,-0.3189,0.0399,0.1238,0.3491,0.3793,-0.1443,-0.2052,-0.0777,0.3542,0.0971,-0.0509,-0.2429,0.1487,-0.1266,0.6393,0.0671],
+    "blockboot":[0.0472,0.2412,0.3612,0.6584,0.1414,0.1815,0.696,0.753,0.7658,0.7155,0.1678,0.2868,0.5942,0.0104,0.2923,1.046,0.4101,0.2181,0.5311,0.6482,0.9176,0.5692,1.075,0.4396,0.7626]},
+  "ewcw": {"label":"RSP / SPY · monthly","note":"25 surrogates per family","real":0.0882,
+    "signflip":[-0.2667,-0.3389,-0.495,-0.3316,0.1777,-0.2794,0.3598,-0.0771,-0.1124,0.0857,0.1088,0.0512,-0.0051,-0.269,-0.0879,0.0117,-0.2839,0.2622,-0.6259,-0.016,-0.1006,-0.2751,-0.0178,0.1437,-0.6072],
+    "blockboot":[0.4422,0.1473,0.1929,0.564,-0.1138,0.1913,0.284,-0.0357,-0.2834,0.2781,0.2842,-0.2031,-0.1683,-0.052,0.197,0.1201,0.6792,-0.2457,0.025,0.3276,0.0755,0.749,0.437,0.2658,0.1959]},
+  "valgro": {"label":"IVE / IVW · monthly","note":"20 surrogates per family","real":-0.0608,
+    "signflip":[0.117,0.1431,-0.71,-0.0406,-0.6276,-0.2366,-0.0401,-0.3687,0.141,0.4135,-0.2599,-0.0131,0.3896,-0.0365,0.4011,0.2757,0.0059,0.1017,0.5659,-0.194],
+    "blockboot":[0.012,-0.2015,0.1617,-0.1092,-0.0045,0.0633,-0.062,0.73,-0.3216,0.9032,0.1311,-0.3497,0.2485,-0.0191,-0.2693,0.0547,0.2317,0.048,-0.2189,-0.1527]},
+  "goldbtc": {"label":"BTC-USD / GLD · daily","note":"30 surrogates per family","real":0.9116,
+    "signflip":[-0.7433,0.0893,0.1575,0.1609,0.6543,-0.0341,0.572,0.2412,0.9527,0.8015,0.1759,0.4386,0.4541,0.308,-0.1541,0.4557,0.059,0.7459,0.2908,0.2261,0.4294,0.1597,0.5717,0.0135,0.7557,0.3593,-0.7125,-0.1711,0.7413,0.3485],
+    "blockboot":[0.6468,0.3373,0.2247,0.7184,0.0611,1.2791,1.2525,1.8426,0.6611,1.4347,0.7392,0.8028,0.1537,-0.2385,1.2792,1.5624,0.659,1.0118,0.0146,1.0263,0.9377,0.1006,0.4062,0.9769,0.6298,0.6604,1.2523,1.1,1.1078,0.8624]},
+  "vixts": {"label":"SPY ← ^VIX/^VIX3M · daily","note":"30 surrogates per family","real":0.5545,
+    "signflip":[-0.1328,-0.3602,-0.0281,0.0172,-0.3662,-0.4128,-0.2768,-0.176,-0.1368,-0.4229,0.315,-0.1659,-0.1967,-0.1469,-0.2051,-0.0579,-0.1932,0.321,-0.5058,0.293,-0.1744,0.1389,-0.2407,-0.2847,0.0236,-0.4528,-0.1797,0.012,0.2399,-0.4403],
+    "blockboot":[0.7511,0.1042,0.1281,0.5577,0.2934,0.5052,0.477,0.0492,-0.102,0.4336,0.7889,-0.0954,0.6269,0.4893,-0.0809,1.0109,0.3802,0.3899,0.6021,0.6028,0.7121,0.1521,0.5694,0.1613,-0.3259,-0.1118,1.1626,0.3018,0.2277,0.4753]},
+  "smlg": {"label":"IWM / IWB · monthly","note":"30 surrogates per family","real":-0.5348,
+    "signflip":[-0.1699,-0.0505,-0.2454,-0.3147,-0.1304,-0.0103,0.1701,0.258,-0.1697,0.2503,-0.3585,-0.0291,-0.475,0.0004,0.5213,-0.0881,0.445,-0.4753,-0.0663,0.0276,-0.2883,0.0185,-0.1887,-0.6642,-0.1644,0.1049,-0.1688,-0.118,0.0903,0.2368],
+    "blockboot":[-0.515,-0.0347,0.3165,0.1685,0.3567,0.4285,-0.029,0.2534,-0.4196,0.325,-0.5392,0.234,-0.0162,0.468,0.0029,-0.0062,0.5895,-0.1668,0.394,0.3577,-0.0388,0.2275,0.1739,-0.2718,0.3566,0.1982,0.0796,0.4753,-0.0859,-0.1994]},
+  "momlv": {"label":"MTUM / USMV · monthly","note":"40 surrogates per family","real":1.0099,
+    "signflip":[0.274,-0.3412,0.6736,-0.3294,-0.1905,0.1892,0.3367,-0.0268,-0.1596,0.1542,-0.3477,0.4104,-0.6533,0.9646,-0.1372,-0.5098,0.5085,-0.2196,-0.7892,-0.0382,0.153,-0.4824,0.443,0.2585,-0.416,-0.3689,0.0995,-0.5856,-0.1012,-0.0279,-0.4772,-1.0921,-0.0261,-0.9333,-0.697,-0.5,1.0145,0.2853,-0.3496,0.6265],
+    "blockboot":[-0.2872,0.407,0.6925,0.4989,0.9803,0.8075,0.4717,0.7301,0.623,0.7517,0.9928,0.4931,-0.1052,0.1915,0.7671,0.52,0.1731,-0.0257,0.8114,0.3533,0.6527,0.2123,1.2535,-0.7897,0.4322,0.858,0.5803,-0.0734,0.3367,0.4767,0.0852,-0.0651,-0.8243,0.6981,0.7831,0.6015,0.8847,1.6383,-0.1044,0.5331]}
+}
+</script>
+
+<script>
+(function () {
+  var data = JSON.parse(document.getElementById("null-data").textContent);
+  var LO = -1.25, HI = 1.85, W = 1000, H = 34;
+
+  function x(v) { return ((v - LO) / (HI - LO)) * W; }
+
+  function pct(sorted, q) {
+    var i = (sorted.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i);
+    return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+  }
+
+  function strip(scores, real) {
+    var s = scores.slice().sort(function (a, b) { return a - b; });
+    var p5 = pct(s, 0.05), p95 = pct(s, 0.95);
+    var beat = scores.filter(function (v) { return v >= real; }).length;
+    var p = (beat + 1) / (scores.length + 1);
+
+    var parts = [];
+    parts.push('<svg class="strip-svg" viewBox="0 0 ' + W + ' ' + H +
+      '" preserveAspectRatio="none" role="img" aria-label="null distribution, p equals ' +
+      p.toFixed(3) + '">');
+    // 5-95 band
+    parts.push('<rect x="' + x(p5) + '" y="4" width="' + Math.max(1, x(p95) - x(p5)) +
+      '" height="' + (H - 12) + '" fill="var(--band)"/>');
+    // baseline + zero
+    parts.push('<line x1="0" y1="' + (H - 6) + '" x2="' + W + '" y2="' + (H - 6) +
+      '" stroke="var(--rule)" stroke-width="1"/>');
+    parts.push('<line x1="' + x(0) + '" y1="2" x2="' + x(0) + '" y2="' + (H - 4) +
+      '" stroke="var(--rule)" stroke-width="2"/>');
+    // surrogate ticks
+    scores.forEach(function (v) {
+      parts.push('<line x1="' + x(v) + '" y1="7" x2="' + x(v) + '" y2="' + (H - 9) +
+        '" stroke="var(--noise)" stroke-width="2.5" opacity="0.75"/>');
+    });
+    // observed
+    var cx = x(real), cy = (H - 6) / 2 + 1, r = 7.5;
+    parts.push('<polygon points="' + cx + ',' + (cy - r) + ' ' + (cx + r * 0.55) + ',' + cy +
+      ' ' + cx + ',' + (cy + r) + ' ' + (cx - r * 0.55) + ',' + cy +
+      '" fill="var(--accent)" stroke="var(--paper)" stroke-width="1.5"/>');
+    parts.push('</svg>');
+    return { svg: parts.join(""), p: p, beat: beat, max: s[s.length - 1] };
+  }
+
+  var out = [];
+  Object.keys(data).forEach(function (k) {
+    var d = data[k];
+    var rows = ["signflip", "blockboot"].map(function (mode) {
+      var st = strip(d[mode], d.real);
+      var name = mode === "signflip" ? "sign-flip" : "block-boot";
+      return '<div class="strip-row"><span class="strip-label">' + name +
+        '  p=' + st.p.toFixed(3) + '</span>' + st.svg + '</div>';
+    }).join("");
+    out.push('<div class="strip-group"><div class="strip-head">' +
+      '<span class="strip-name">' + d.label + '</span>' +
+      '<span class="strip-note">observed ' + (d.real >= 0 ? "+" : "") +
+      d.real.toFixed(3) + ' · ' + d.note + '</span></div>' + rows + '</div>');
+  });
+  document.getElementById("strips").innerHTML = out.join("");
+})();
+</script>
+
+<p style="max-width:78ch;margin:3rem auto 4rem;padding:0 1.4rem;
+          font-family:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace;
+          font-size:0.72rem;line-height:1.7;opacity:0.75">
+  Code, run logs, fitted parameters and the full surrogate score arrays:
+  <a href="https://github.com/patzoul/llm-strategy-search" style="color:inherit">https://github.com/patzoul/llm-strategy-search</a><br>
+  Corrections and methodological objections are welcome as
+  <a href="https://github.com/patzoul/llm-strategy-search/issues" style="color:inherit">issues</a>.
+</p>
+</body>
+</html>
