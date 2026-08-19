@@ -31,3 +31,9 @@ yfinance>=0.2.40
 # The fallback is correct but far slower, and the null bars run tens of
 # thousands of these calls inside the optimiser loop.
 bottleneck>=1.3
+
+# Only used by rdgate.py, and only inside SearchGuard.check_qlib_config, which
+# parses the Qlib workflow YAML an RD-Agent run would be launched against to
+# refuse configs whose backtest window reaches into the holdout. The rest of
+# rdgate imports without it, so this stays optional in practice.
+pyyaml>=6.0
