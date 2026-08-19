@@ -1,13 +1,20 @@
 """Honest-gate wrapper for an RD-Agent(Q) search run.
 
-RD-Agent's own loop hill-climbs on the same backtest it reports (the Analysis Unit
-is shown IC / ARR / MDD and answers "Replace Best Result: yes"), and never counts
-its trials even though it logs them (Table 3: TL / VL / SL). This module fixes
-three things:
+RD-Agent selects on the same backtest segment it reports: the Analysis Unit sees
+IC / ARR / MDD and answers "Replace Best Result: yes". It also logs every loop
+(TL / VL / SL) without feeding that count into a multiple-testing adjustment,
+which is reasonable for a framework whose job is search rather than validation.
+
+This wrapper adds the three things a user needs on top if they want a defensible
+out-of-sample claim:
 
   1. the agent is only ever pointed at a search window that excludes the holdout;
   2. every loop is counted, and the count feeds the deflated Sharpe;
   3. the holdout is scored exactly once, after the agent has stopped.
+
+None of that is a defect report. The loop count is already in the logs and the
+segment structure is already configurable -- this just wires them into a gate,
+which is a different job from the one RD-Agent set out to do.
 
 Drop beside run.py in llm-strategy-search. Ports to quantkit by swapping
 llmsearch.validate.deflated_sharpe -> quantkit.validate.deflated_sharpe (same
@@ -37,7 +44,7 @@ from llmsearch.panel import Panel
 
 
 # ---------------------------------------------------------------------------
-# 1. trial accounting -- the number RD-Agent logs and then ignores
+# 1. trial accounting -- wiring the logged loop count into the DSR
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -60,7 +67,7 @@ class SearchLog:
         A loop that crashed in Co-STEER still consumed a look at the data if it
         got as far as a backtest. A rejected loop is still a trial: it is
         precisely the rejected ones that make the accepted one look good.
-        Undercounting here is the easiest way to fake a passing DSR.
+        Undercounting here is the easiest way to inflate a DSR into passing.
         """
         return len(self.trials)
 
@@ -143,10 +150,12 @@ class SearchGuard:
         """Read the Qlib workflow YAML the agent hands to its Validation Unit and
         refuse if anything it scores reaches into the holdout.
 
-        This is the whole fix in one function. RD-Agent's default config backtests
-        `segments.test`, and the paper reports `segments.test` -- so the search
-        selects on the number it publishes. Here the agent's test segment must end
-        before the holdout begins; the holdout is not a segment at all.
+        The default Qlib workflow backtests `segments.test`, which is also the
+        segment reported, so the search and the headline number share a window.
+        That is workable for a search framework; it just means anyone wanting an
+        untouched holdout has to carve one out themselves. Here the agent's test
+        segment must end before the holdout begins, and the holdout is not a
+        segment at all.
         """
         import yaml
         with open(path, encoding="utf-8") as fh:
@@ -239,7 +248,7 @@ def returns_to_panel(ret: pd.Series, ppy: float = 252.0,
 
 
 # ---------------------------------------------------------------------------
-# 4. the null bar -- the gate RD-Agent has no analogue for
+# 4. the null bar -- the gate this wrapper adds
 # ---------------------------------------------------------------------------
 
 def null_bar_plan(n_null: int = 12, hours_per_run: float = 12.0,
@@ -249,8 +258,8 @@ def null_bar_plan(n_null: int = 12, hours_per_run: float = 12.0,
     Freeze nothing: block-bootstrap each stock's returns (block ~21d, preserving
     volatility clustering while destroying cross-sectional predictability), rebuild
     the Qlib .bin store, and let the agent search it on the same budget. If it
-    still "discovers" factors with IC ~0.05, the loop is a noise miner and the real
-    result means nothing.
+    still surfaces factors with IC ~0.05 on structureless data, the original result
+    is not distinguishable from what the search produces on noise.
 
     The cheap substitute -- freeze the discovered factor set and re-fit only the
     model on surrogates -- tests the SELECTION but not the PROPOSAL, and the
